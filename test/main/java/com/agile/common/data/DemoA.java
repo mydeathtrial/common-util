@@ -63,7 +63,7 @@ public class DemoA {
         map.put("attrString1", "attrString1Value");
         map.put("attr_string2", "attrString2Value");
         map.put("attrInt", "100");
-        map.put("attrLong", "222L");
+        map.put("attrLong", "222l");
         map.put("attrChar", "c");
         map.put("attrShort", "33");
         map.put("attrFloat", "44f");
@@ -80,7 +80,7 @@ public class DemoA {
         map.put("attr_Boolean", "false");
         map.put("attr_Byte", "6");
 
-        map.put("date", "19900905 11:12 下午");
+        map.put("date", "1990nian09月05 11:12 下午");
         map.put("stringBuilder", "stringBuilderValue");
         map.put("bigDecimal", "123456789012345567678");
         map.put("integerList", new String[]{"1", "2", "3"});

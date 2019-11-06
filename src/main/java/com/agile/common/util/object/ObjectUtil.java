@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -107,6 +108,11 @@ public class ObjectUtil extends ObjectUtils {
                     Method valueOf = enumClass.getMethod("valueOf", String.class);
                     valueOf.setAccessible(true);
                     return (T) valueOf.invoke(null, targetName);
+                } else {
+                    HashMap<String, Enum> map = Maps.newHashMapWithExpectedSize(v.length);
+                    nameList = Stream.of(v).peek(node -> map.put(node.toString(), node)).map(Enum::toString).collect(Collectors.toList());
+                    targetName = StringUtil.vagueMatches(from.toString(), nameList);
+                    return (T) map.get(targetName);
                 }
             } catch (Exception ignored) {
             }
@@ -220,7 +226,7 @@ public class ObjectUtil extends ObjectUtils {
         }
         final Class sourceClass = from.getClass();
         if (sourceClass.isPrimitive() || Iterable.class.isAssignableFrom(sourceClass)) {
-            throw new ParseException();
+            return null;
         }
         if (ClassUtil.isExtendsFrom(sourceClass, Map.class)) {
             Map<String, Object> map = (Map<String, Object>) from;
@@ -380,9 +386,12 @@ public class ObjectUtil extends ObjectUtils {
                             .collect(Collectors.toList());
 
                     for (Method method : list) {
-                        invokeMethodIfParamNotNull(object, method, value);
-                        if (field.get(object) != initValue) {
-                            return;
+                        try {
+                            invokeMethodIfParamNotNull(object, method, value);
+                            if (field.get(object) != initValue) {
+                                return;
+                            }
+                        } catch (Exception ignored) {
                         }
                     }
                 }

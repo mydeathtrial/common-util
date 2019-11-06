@@ -86,6 +86,26 @@ public class TypeReference<T> {
     }
 
     /**
+     * 判断是否是枚举
+     *
+     * @return 是否
+     */
+    public boolean isEnum() {
+        Class sourceClass = getWrapperClass();
+        return sourceClass.isEnum();
+    }
+
+    /**
+     * 判断是否是数组
+     *
+     * @return 是否
+     */
+    public boolean isArray() {
+        Class sourceClass = getWrapperClass();
+        return sourceClass.isArray();
+    }
+
+    /**
      * 判断是否为基础类型
      *
      * @return 是否

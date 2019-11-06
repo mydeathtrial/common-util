@@ -28,7 +28,7 @@ public class ObjectUtilTest {
     }
 
     /**
-     * 测试Map转对象
+     * 测试对象转Map
      */
     @Test
     public void objectToMap() {
@@ -39,7 +39,7 @@ public class ObjectUtilTest {
     }
 
     /**
-     * 测试Map转对象
+     * 测试对象转对象
      */
     @Test
     public void objectToObject() {

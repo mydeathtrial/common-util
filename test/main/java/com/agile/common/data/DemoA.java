@@ -52,71 +52,80 @@ public class DemoA {
     private List<DemoA> demoAList;
     private Map<String, DemoA> stringDemoAMap;
 
-    public static Map<String,Object> testData(){
-            Map<String,Object> map = Maps.newHashMap();
-            map.put("attrString1","attrString1Value");
-            map.put("attr_string2","attrString2Value");
-            map.put("attrInt","100");
-            map.put("attrLong","222L");
-            map.put("attrChar","c");
-            map.put("attrShort","33");
-            map.put("attrFloat","44f");
-            map.put("attrDouble","55555555555555555555");
-            map.put("attrBoolean","5");
-            map.put("attrByte","6");
+    private Integer[] integersArray;
 
-            map.put("attr_int","100");
-            map.put("attr_Long","222");
-            map.put("attr_Char","c");
-            map.put("attr_Short","33");
-            map.put("attr_Float","44.02");
-            map.put("attr_Double","55555555555555555555");
-            map.put("attr_Boolean","false");
-            map.put("attr_Byte","6");
+    private DemoEnum demoEnum;
 
-            map.put("date","19900905 11:12 下午");
-            map.put("stringBuilder","stringBuilderValue");
-            map.put("bigDecimal","123456789012345567678");
-            map.put("integerList",new String[]{"1","2","3"});
-            map.put("integerLinkedList",new ArrayList<String>(){{
-                    add("1");
-                    add("2");
-            }});
+    private DemoEnum[] demoEnumArray;
 
-            map.put("floatSet",new LinkedList(){{
-                    add("1");
-                    add("2");
-            }});
+    public static Map<String, Object> testData() {
+        Map<String, Object> map = Maps.newHashMap();
+        map.put("attrString1", "attrString1Value");
+        map.put("attr_string2", "attrString2Value");
+        map.put("attrInt", "100");
+        map.put("attrLong", "222L");
+        map.put("attrChar", "c");
+        map.put("attrShort", "33");
+        map.put("attrFloat", "44f");
+        map.put("attrDouble", "55555555555555555555");
+        map.put("attrBoolean", "5");
+        map.put("attrByte", "6");
 
-            map.put("floatTreeSet",new PriorityQueue(){{
-                    add("1");
-                    add("2");
-            }});
+        map.put("attr_int", "100");
+        map.put("attr_Long", "222");
+        map.put("attr_Char", "c");
+        map.put("attr_Short", "33");
+        map.put("attr_Float", "44.02");
+        map.put("attr_Double", "55555555555555555555");
+        map.put("attr_Boolean", "false");
+        map.put("attr_Byte", "6");
 
-            map.put("longQueue",new PriorityQueue(){{
-                    add("1L");
-                    add("2l");
-            }});
+        map.put("date", "19900905 11:12 下午");
+        map.put("stringBuilder", "stringBuilderValue");
+        map.put("bigDecimal", "123456789012345567678");
+        map.put("integerList", new String[]{"1", "2", "3"});
+        map.put("integerLinkedList", new ArrayList<String>() {{
+            add("1");
+            add("2");
+        }});
 
-            map.put("longPriorityQueue",new PriorityQueue(){{
-                    add("1L");
-                    add("2l");
-            }});
+        map.put("floatSet", new LinkedList() {{
+            add("1");
+            add("2");
+        }});
 
-            map.put("stringIntegerMap",new DemoB());
-            map.put("integerIntegerLinkedHashMap",new HashMap<String,String>(){{
-                    put("1","11");
-                    put("2","22");
-                    put("3","33");
-            }});
+        map.put("floatTreeSet", new PriorityQueue() {{
+            add("1");
+            add("2");
+        }});
 
-            HashMap<String, Object> map2 = Maps.newHashMap(map);
-            map.put("demoAList",new HashMap[]{map2,map2});
-            map.put("stringDemoAMap", new HashMap<String,Object>(){{
-                    put("1",map2);
-                    put("2",map2);
-            }});
+        map.put("longQueue", new PriorityQueue() {{
+            add("1L");
+            add("2l");
+        }});
 
-            return map;
+        map.put("longPriorityQueue", new PriorityQueue() {{
+            add("1L");
+            add("2l");
+        }});
+
+        map.put("stringIntegerMap", new DemoB());
+        map.put("integerIntegerLinkedHashMap", new HashMap<String, String>() {{
+            put("1", "11");
+            put("2", "22");
+            put("3", "33");
+        }});
+
+        HashMap<String, Object> map2 = Maps.newHashMap(map);
+        map.put("demoAList", new HashMap[]{map2, map2});
+        map.put("stringDemoAMap", new HashMap<String, Object>() {{
+            put("1", map2);
+            put("2", map2);
+        }});
+
+        map.put("integersArray", new String[]{"1", "2"});
+        map.put("demoEnum", "a_bc");
+        map.put("demoEnumArray", new String[]{"aa", "bb", "a_bc"});
+        return map;
     }
 }

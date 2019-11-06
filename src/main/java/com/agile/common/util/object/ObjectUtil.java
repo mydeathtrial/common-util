@@ -11,6 +11,7 @@ import com.agile.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author 佟盟
@@ -45,7 +47,11 @@ public class ObjectUtil extends ObjectUtils {
         if (from == null) {
             return null;
         }
-        if (toClass.isExtendsFrom(Collection.class)) {
+        if (toClass.isEnum()) {
+            result = toEnum(from, toClass);
+        } else if (toClass.isArray()) {
+            result = toArray(from, toClass);
+        } else if (toClass.isExtendsFrom(Collection.class)) {
             result = toCollection(from, toClass);
         } else if (toClass.isExtendsFrom(Map.class)) {
             result = toMap(from, toClass);
@@ -61,20 +67,82 @@ public class ObjectUtil extends ObjectUtils {
         } else {
             // POJO类型转换
             result = toPOJO(from, (Class<T>) toClass.getType());
-        }
 
-        if (result == null) {
-            try {
-                Constructor<T> construct = toClass.getConstruct(from.getClass());
-                if (construct == null) {
-                    construct = toClass.getConstruct(String.class);
-                    result = construct.newInstance(from.toString());
+            if (result == null) {
+                try {
+                    Constructor<T> construct = toClass.getConstruct(from.getClass());
+                    if (construct == null) {
+                        construct = toClass.getConstruct(String.class);
+                        result = construct.newInstance(from.toString());
+                    }
+                    result = construct.newInstance(from);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ignored) {
                 }
-                result = construct.newInstance(from);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException ignored) {
             }
         }
+
         return result;
+    }
+
+    /**
+     * 转换为枚举类型
+     *
+     * @param from    被转换对象
+     * @param toClass 目标类型
+     * @param <T>     泛型
+     * @return 转换后的对象
+     */
+    private static <T> T toEnum(Object from, TypeReference<T> toClass) {
+        if (toClass.isEnum()) {
+            try {
+                Class enumClass = toClass.getWrapperClass();
+                Method values = enumClass.getMethod("values");
+                values.setAccessible(true);
+                Enum[] v = (Enum[]) values.invoke(null);
+
+                List<String> nameList = Stream.of(v).map(Enum::name).collect(Collectors.toList());
+                String targetName = StringUtil.vagueMatches(from.toString(), nameList);
+
+                if (targetName != null) {
+                    Method valueOf = enumClass.getMethod("valueOf", String.class);
+                    valueOf.setAccessible(true);
+                    return (T) valueOf.invoke(null, targetName);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 转换为数组类型
+     *
+     * @param from    被转换对象
+     * @param toClass 目标类型
+     * @param <T>     泛型
+     * @return 转换后的对象
+     */
+    private static <T, A> T toArray(Object from, TypeReference<T> toClass) {
+        A[] array = null;
+
+        Class innerClass = toClass.getWrapperClass().getComponentType();
+        if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
+            array = (A[]) Array.newInstance(innerClass, ((Collection) from).size());
+            int i = 0;
+            for (Object node : (Collection) from) {
+                array[i++] = (A) to(node, new TypeReference<Object>(innerClass) {
+                });
+            }
+        } else if (from.getClass().isArray()) {
+            array = (A[]) Array.newInstance(innerClass, ((Object[]) from).length);
+            int i = 0;
+            for (Object node : (Object[]) from) {
+                array[i++] = (A) to(node, new TypeReference<Object>(innerClass) {
+                });
+            }
+        }
+
+        return (T) array;
     }
 
     private static <T> T toMap(Object from, TypeReference<T> toClass) {
@@ -97,9 +165,6 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换结果
      */
     private static <T> T toCollection(Object from, TypeReference<T> toClass) {
-        if (from.getClass() == toClass.getType()) {
-            return (T) from;
-        }
         if (toClass.isExtendsFrom(Collection.class)) {
 
             if (!ClassUtil.isExtendsFrom(from.getClass(), Collection.class) && !from.getClass().isArray()) {
@@ -110,7 +175,7 @@ public class ObjectUtil extends ObjectUtils {
                 return null;
             }
 
-            Collection<?> collection = null;
+            Collection<?> collection;
             if ((toClass.getWrapperClass()).isInterface()) {
                 if (toClass.isExtendsFrom(Queue.class)) {
                     collection = new ArrayDeque<>();

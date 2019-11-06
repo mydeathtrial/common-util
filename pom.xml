@@ -6,7 +6,7 @@
 
     <groupId>com.agileframework</groupId>
     <artifactId>common-util</artifactId>
-    <version>0.1</version>
+    <version>0.1.1</version>
 
     <properties>
         <druid.version>1.1.12</druid.version>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>3.1.0</version>
+            <version>LATEST</version>
             <scope>test</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/junit/junit -->
@@ -59,4 +59,11 @@
             </plugin>
         </plugins>
     </build>
+
+    <distributionManagement>
+        <repository>
+            <id>agile</id>
+            <url>http://10.10.10.9:8081/nexus/content/repositories/agile</url>
+        </repository>
+    </distributionManagement>
 </project>

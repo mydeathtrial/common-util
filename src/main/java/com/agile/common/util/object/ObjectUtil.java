@@ -14,7 +14,6 @@ import org.apache.commons.lang3.ObjectUtils;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
@@ -72,18 +71,46 @@ public class ObjectUtil extends ObjectUtils {
             if (result == null) {
                 try {
                     Constructor<T> construct = toClass.getConstruct(from.getClass());
-                    if (construct == null) {
-                        construct = toClass.getConstruct(String.class);
-                        result = construct.newInstance(from.toString());
-                    }
                     result = construct.newInstance(from);
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException ignored) {
+                } catch (Exception ignored) {
+                }
+
+            }
+
+            if (result == null) {
+                try {
+                    Constructor<T> construct = toClass.getConstruct(String.class);
+                    result = construct.newInstance(toString(from));
+                } catch (Exception ignored) {
                 }
             }
         }
 
         return result;
     }
+
+    /**
+     * 对象转字符串
+     *
+     * @param from 被转换对象
+     * @return 转换后的字符串
+     */
+    public static String toString(Object from) {
+        String result;
+        if (from.getClass().isArray()) {
+            result = ArrayUtil.toString(from);
+        } else if (Collection.class.isAssignableFrom(from.getClass())) {
+            result = ArrayUtil.toString(((Collection) from).toArray());
+        } else if (Map.class.isAssignableFrom(from.getClass())) {
+            result = from.toString();
+        } else if (from.getClass().isEnum()) {
+            result = ((Enum) from).name();
+        } else {
+            result = from.toString();
+        }
+        return result;
+    }
+
 
     /**
      * 转换为枚举类型
@@ -177,7 +204,7 @@ public class ObjectUtil extends ObjectUtils {
                 return null;
             }
             Type nodeType = toClass.getParameterizedType(0);
-            if (!(nodeType instanceof Class)) {
+            if (nodeType == null) {
                 return null;
             }
 
@@ -267,7 +294,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param <T>     结果泛型
      * @return 转换后的结果
      */
-    public static <T> T to(Object from, Class<T> toClass) {
+    private static <T> T to(Object from, Class<T> toClass) {
         if (from == null) {
             return null;
         }
@@ -708,15 +735,13 @@ public class ObjectUtil extends ObjectUtils {
                 if (value != null) {
                     Type type = field.getGenericType();
                     TypeReference<Object> typeReference = new TypeReference<>(type);
-                    if (!(typeReference.getWrapperClass()).isAssignableFrom(value.getClass())) {
-                        value = to(value, typeReference);
-                    }
+                    value = to(value, typeReference);
                 }
 
                 field.setAccessible(true);
                 field.set(target, value);
 
-            } catch (IllegalAccessException ignored) {
+            } catch (Exception ignored) {
 
             }
         }
@@ -739,39 +764,5 @@ public class ObjectUtil extends ObjectUtils {
         } catch (IllegalAccessException e) {
             return null;
         }
-    }
-
-    public static class A {
-        private String userName;
-        private int code;
-        private A a;
-        private Queue<A> queue;
-        private Set<Integer> set;
-        private List<Integer> list;
-        private Map<StringBuilder, Integer> map;
-    }
-
-
-    public static void main(String[] args) {
-        Map<String, Object> map0 = Maps.newHashMap();
-        map0.put("user_name", "333");
-        map0.put("code", "333");
-        map0.put("set", new String[]{"33", "44"});
-        map0.put("list", new String[]{"55", "66"});
-
-        Map<String, Object> map = Maps.newHashMap();
-        map.put("user_name", "222");
-        map.put("code", "222");
-//        map.put("a", map0);
-
-        Map<String, Object> map1 = Maps.newHashMap();
-        map1.put("user_name", "1111");
-        map1.put("code", "1111");
-        map1.put("a", map);
-        map1.put("queue", new Map[]{map, map});
-        map1.put("map", map);
-
-        to(map1, new TypeReference<A>() {
-        });
     }
 }

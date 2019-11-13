@@ -175,6 +175,14 @@ public class MapUtil {
         return map;
     }
 
+    public static Map addPrefix(Map<String, Object> from, String prefix) {
+        Map<String, Object> toMap = Maps.newHashMapWithExpectedSize(from.size());
+        from.entrySet().stream().forEach(e -> {
+            toMap.put(prefix + e.getKey(), e.getValue());
+        });
+        return toMap;
+    }
+
     public static void main(String[] args) {
         Map<String, Object> result = Maps.newHashMap();
         result.put("myname", "1");

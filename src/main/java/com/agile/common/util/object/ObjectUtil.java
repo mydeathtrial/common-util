@@ -173,6 +173,9 @@ public class ObjectUtil extends ObjectUtils {
                 array[i++] = (A) to(node, new TypeReference<Object>(innerClass) {
                 });
             }
+        } else if (from instanceof String) {
+            String[] strings = ((String) from).split(",");
+            return toArray(strings, toClass);
         }
 
         return (T) array;
@@ -200,39 +203,41 @@ public class ObjectUtil extends ObjectUtils {
     private static <T> T toCollection(Object from, TypeReference<T> toClass) {
         if (toClass.isExtendsFrom(Collection.class)) {
 
-            if (!ClassUtil.isExtendsFrom(from.getClass(), Collection.class) && !from.getClass().isArray()) {
-                return null;
-            }
-            Type nodeType = toClass.getParameterizedType(0);
-            if (nodeType == null) {
-                return null;
-            }
+            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class) || from.getClass().isArray()) {
+                Type nodeType = toClass.getParameterizedType(0);
+                if (nodeType == null) {
+                    return null;
+                }
 
-            Collection<?> collection;
-            if ((toClass.getWrapperClass()).isInterface()) {
-                if (toClass.isExtendsFrom(Queue.class)) {
-                    collection = new ArrayDeque<>();
-                } else if (toClass.isExtendsFrom(Set.class)) {
-                    collection = new HashSet<>();
+                Collection<?> collection;
+                if ((toClass.getWrapperClass()).isInterface()) {
+                    if (toClass.isExtendsFrom(Queue.class)) {
+                        collection = new ArrayDeque<>();
+                    } else if (toClass.isExtendsFrom(Set.class)) {
+                        collection = new HashSet<>();
+                    } else {
+                        collection = new ArrayList<>();
+                    }
                 } else {
-                    collection = new ArrayList<>();
+                    collection = (Collection<?>) ClassUtil.newInstance(toClass.getWrapperClass());
                 }
-            } else {
-                collection = (Collection<?>) ClassUtil.newInstance(toClass.getWrapperClass());
-            }
 
-            if (collection != null) {
-                if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
-                    for (Object o : (Collection) from) {
-                        collection.add(to(o, new TypeReference<>(nodeType)));
-                    }
-                } else if (from.getClass().isArray()) {
-                    for (Object o : (Object[]) from) {
-                        collection.add(to(o, new TypeReference<>(nodeType)));
+                if (collection != null) {
+                    if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
+                        for (Object o : (Collection) from) {
+                            collection.add(to(o, new TypeReference<>(nodeType)));
+                        }
+                    } else if (from.getClass().isArray()) {
+                        for (Object o : (Object[]) from) {
+                            collection.add(to(o, new TypeReference<>(nodeType)));
+                        }
                     }
                 }
+                return (T) collection;
+            } else if (from instanceof String) {
+                String[] strings = ((String) from).split(",");
+                return toCollection(strings, toClass);
             }
-            return (T) collection;
         }
 
         return null;

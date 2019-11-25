@@ -131,7 +131,7 @@ public class ClassUtil extends ClassUtils {
         Map<String, Field> targetFields = new HashMap<>(Constant.NumberAbout.ONE);
         String targetFieldName = StringUtil.camelToMatchesRegex(fieldName);
         for (Field field : fields) {
-            if (PatternUtil.find(targetFieldName, field.getName())) {
+            if (PatternUtil.matches(targetFieldName, field.getName())) {
                 field.setAccessible(true);
                 targetFields.put(field.getName(), field);
             }

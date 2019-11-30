@@ -2,9 +2,11 @@ package com.agile.common.util.string;
 
 import com.agile.common.constant.Constant;
 import com.agile.common.util.pattern.PatternUtil;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -174,6 +176,105 @@ public class StringUtil extends StringUtils {
         }
         String camelString = toCamel(text);
         return camelString.substring(0, 1).toLowerCase() + camelString.substring(1);
+    }
+
+    public static String parsingPlaceholder(String openToken, String closeToken, String text, Map<?, ?> args) {
+        return parsingPlaceholder(openToken, closeToken, text, args, null);
+    }
+
+    /**
+     * 将字符串text中由openToken和closeToken组成的占位符依次替换为args数组中的值
+     *
+     * @param openToken   开始符号
+     * @param closeToken  结束符号
+     * @param text        转换原文
+     * @param args        替换内容集合
+     * @param replaceNull 代替空参占位
+     * @return
+     */
+    public static String parsingPlaceholder(String openToken, String closeToken, String text, Map<?, ?> args, String replaceNull) {
+        if (args == null || args.size() <= 0) {
+            if (replaceNull != null) {
+                args = Maps.newHashMap();
+            } else {
+                return text;
+            }
+        }
+
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        char[] src = text.toCharArray();
+        int offset = 0;
+        // search open token
+        int start = text.indexOf(openToken, offset);
+        if (start == -1) {
+            return text;
+        }
+        final StringBuilder builder = new StringBuilder();
+        StringBuilder expression = null;
+        while (start > -1) {
+            if (start > 0 && src[start - 1] == '\\') {
+                // this open token is escaped. remove the backslash and continue.
+                builder.append(src, offset, start - offset - 1).append(openToken);
+                offset = start + openToken.length();
+            } else {
+                // found open token. let's search close token.
+                if (expression == null) {
+                    expression = new StringBuilder();
+                } else {
+                    expression.setLength(0);
+                }
+                builder.append(src, offset, start - offset);
+                offset = start + openToken.length();
+                int end = text.indexOf(closeToken, offset);
+                while (end > -1) {
+                    if (end > offset && src[end - 1] == '\\') {
+                        // this close token is escaped. remove the backslash and continue.
+                        expression.append(src, offset, end - offset - 1).append(closeToken);
+                        offset = end + closeToken.length();
+                        end = text.indexOf(closeToken, offset);
+                    } else {
+                        expression.append(src, offset, end - offset);
+                        break;
+                    }
+                }
+                if (end == -1) {
+                    // close token was not found.
+                    builder.append(src, start, src.length - start);
+                    offset = src.length;
+                } else {
+                    String key = expression.toString();
+                    String[] keyObj = key.split(":-");
+                    Object o;
+                    String value;
+                    if (keyObj.length > 0) {
+                        o = args.get(keyObj[0]);
+                    } else {
+                        o = args.get(key);
+                    }
+
+                    if (o == null) {
+                        if (key.contains(":-")) {
+                            value = keyObj[1].trim();
+                        } else if (replaceNull != null) {
+                            value = replaceNull;
+                        } else {
+                            value = openToken + key + closeToken;
+                        }
+                    } else {
+                        value = String.valueOf(o);
+                    }
+                    builder.append(value);
+                    offset = end + closeToken.length();
+                }
+            }
+            start = text.indexOf(openToken, offset);
+        }
+        if (offset < src.length) {
+            builder.append(src, offset, src.length - offset);
+        }
+        return builder.toString();
     }
 
     public static void main(String[] args) {

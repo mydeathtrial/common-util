@@ -1,12 +1,14 @@
 package com.agile.common.util.properties;
 
 import com.agile.common.constant.Constant;
+import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.file.JarUtil;
 import com.agile.common.util.files.SupportEnum;
+import com.agile.common.util.object.ObjectUtil;
 import com.agile.common.util.string.StringUtil;
 import com.google.common.collect.Sets;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.ByteArrayInputStream;
@@ -19,9 +21,12 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * @author 佟盟
@@ -52,9 +57,14 @@ public class PropertiesUtil {
     private static final String PROPERTIES_KEY_SPLIT = ".";
 
     /**
+     * 配置文件优先级
+     */
+    private static final String[] overrideConfig = new String[]{"bootstrap", "application"};
+
+    /**
      * 日志
      */
-    private static Logger log = LoggerFactory.getLogger(PropertiesUtil.class);
+    private static Log log = LogFactory.getLog(PropertiesUtil.class);
 
     /**
      * 最终配置集
@@ -78,6 +88,19 @@ public class PropertiesUtil {
 
         // 读取环境变量
         readEnv();
+
+        parsePlaceholder();
+    }
+
+    private static void parsePlaceholder() {
+        if (properties == null) {
+            return;
+        }
+        for (Map.Entry<Object, Object> v : properties.entrySet()) {
+            if (v.getValue() instanceof String) {
+                properties.setProperty(String.valueOf(v.getKey()), StringUtil.parsingPlaceholder("${", "}", String.valueOf(v.getValue()), properties));
+            }
+        }
     }
 
     /**
@@ -85,21 +108,68 @@ public class PropertiesUtil {
      */
     private static void readDir() {
         Set<String> fileNames = Sets.newHashSet();
+        Set<String> overrideConfigFileNames = Sets.newHashSet();
         try {
             Collections.list(PropertiesUtil.class.getClassLoader().getResources(""))
                     .forEach(url -> readDir(fileNames, new File(url.getPath())));
 
             String classPath = PropertiesUtil.class.getResource(CLASSES_DIR_SPLIT).getPath();
-            fileNames.stream().sorted((a, b) -> StringUtil.split(b, File.separator).length - StringUtil.split(a, File.separator).length).forEach(fileName -> {
-                try {
-                    read(fileName.replace(classPath, "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)));
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                }
-            });
+
+            fileNames.stream().filter(filterOverrideConfigName(overrideConfigFileNames)).sorted(getStringComparator()).forEach(toRead(classPath));
+
+            overrideConfigFileNames.stream().sorted(getStringComparator()).forEach(toRead(classPath));
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 根据编译目录读取配置方法
+     *
+     * @param classPath 编译目录
+     * @return 方法
+     */
+    private static Consumer<String> toRead(String classPath) {
+        return fileName -> {
+            try {
+                read(fileName.replace(classPath, "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        };
+    }
+
+    /**
+     * 字符串比较方法
+     *
+     * @return 方法
+     */
+    private static Comparator<String> getStringComparator() {
+        return (a, b) -> {
+            int s = b.split("\\\\|/").length - a.split("\\\\|/").length;
+            if (s == 0) {
+                s = a.compareTo(b);
+            }
+            return s;
+        };
+    }
+
+    /**
+     * 过滤优先级较高的配置文件名字
+     *
+     * @param overrideConfigFileNames 过滤后装填的容器
+     * @return 方法
+     */
+    private static Predicate<String> filterOverrideConfigName(Set<String> overrideConfigFileNames) {
+        return name -> {
+            for (String overrideConfigName : overrideConfig) {
+                if (name.contains(overrideConfigName + ".")) {
+                    overrideConfigFileNames.add(name);
+                    return false;
+                }
+            }
+            return true;
+        };
     }
 
     /**
@@ -135,8 +205,15 @@ public class PropertiesUtil {
      */
     public static void readJar(String packagePath) {
         Set<String> resourceNames = JarUtil.getFile(packagePath, false, CLASS);
+        Set<String> overrideConfigFileNames = Sets.newHashSet();
+
         resourceNames.stream()
-                .sorted((a, b) -> b.split(Constant.RegularAbout.SLASH).length - a.split(Constant.RegularAbout.SLASH).length)
+                .filter(filterOverrideConfigName(overrideConfigFileNames))
+                .sorted(getStringComparator())
+                .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName)));
+
+        overrideConfigFileNames.stream()
+                .sorted(getStringComparator())
                 .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName)));
     }
 
@@ -198,7 +275,7 @@ public class PropertiesUtil {
      * @param in 文件流
      * @throws IOException 异常
      */
-    public static void readProperties(InputStream in) throws IOException {
+    private static void readProperties(InputStream in) throws IOException {
         properties.load(in);
     }
 
@@ -207,7 +284,7 @@ public class PropertiesUtil {
      *
      * @param map map数据
      */
-    public static void readProperties(Map<?, ?> map) {
+    private static void readProperties(Map<?, ?> map) {
         if (map == null) {
             return;
         }
@@ -225,7 +302,7 @@ public class PropertiesUtil {
      *
      * @param in yml文件流
      */
-    public static void readYml(InputStream in) {
+    private static void readYml(InputStream in) {
         Yaml yaml = new Yaml();
         Map<String, String> dataMap = yaml.load(in);
         ymlToMap(properties, dataMap, null);
@@ -238,7 +315,7 @@ public class PropertiesUtil {
      * @param map       递归用
      * @param parentKey 递归用
      */
-    public static void ymlToMap(Map<Object, Object> allMap, Map map, String parentKey) {
+    private static void ymlToMap(Map<Object, Object> allMap, Map map, String parentKey) {
         if (map == null) {
             return;
         }
@@ -284,4 +361,68 @@ public class PropertiesUtil {
         }
         return null;
     }
+
+    public static Properties getProperties() {
+        return properties;
+    }
+
+    public static Set<String> getFileNames() {
+        return fileNames;
+    }
+
+    public static void setProperties(String key, String value) {
+        properties.setProperty(key, value);
+    }
+
+    public static void appendProperties(String key, String value) {
+        String v = properties.getProperty(key);
+        if (v == null) {
+            properties.setProperty(key, value);
+        } else {
+            properties.setProperty(key, v + value);
+        }
+    }
+
+    public static String getProperty(String key) {
+        Object value = properties.get(key);
+        if (value != null) {
+            return value.toString();
+        }
+        return null;
+    }
+
+    /**
+     * 获取工程配置信息
+     *
+     * @param key 句柄
+     * @return 值
+     */
+    public static String getProperty(String key, String defaultValue) {
+        Object value = getProperty(key);
+        if (!ObjectUtil.isEmpty(value)) {
+            return value.toString();
+        }
+        return defaultValue;
+    }
+
+    public static Properties getPropertyByPrefix(String prefix) {
+        Properties r = new Properties();
+        Set<String> propertyNames = properties.stringPropertyNames();
+        for (String name : propertyNames) {
+            if (name.startsWith(prefix)) {
+                r.put(name, properties.get(name));
+            }
+        }
+        return r;
+
+    }
+
+    public static <T> T getProperty(String var1, Class<T> var2) {
+        return ObjectUtil.to(getProperty(var1), new TypeReference<T>(var2));
+    }
+
+    public static <T> T getProperty(String var1, Class<T> var2, String defaultValue) {
+        return ObjectUtil.to(getProperty(var1, defaultValue), new TypeReference<T>(var2));
+    }
+
 }

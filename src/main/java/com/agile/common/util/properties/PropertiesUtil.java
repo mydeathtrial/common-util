@@ -18,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -111,7 +112,13 @@ public class PropertiesUtil {
         Set<String> overrideConfigFileNames = Sets.newHashSet();
         try {
             Collections.list(PropertiesUtil.class.getClassLoader().getResources(""))
-                    .forEach(url -> readDir(fileNames, new File(url.getPath())));
+                    .forEach(url -> {
+                        try {
+                            readDir(fileNames, new File(URLDecoder.decode(url.getPath(), StandardCharsets.UTF_8.name())));
+                        } catch (UnsupportedEncodingException e) {
+                            e.printStackTrace();
+                        }
+                    });
 
             String classPath = PropertiesUtil.class.getResource(CLASSES_DIR_SPLIT).getPath();
 
@@ -146,7 +153,8 @@ public class PropertiesUtil {
      */
     private static Comparator<String> getStringComparator() {
         return (a, b) -> {
-            int s = b.split("\\\\|/").length - a.split("\\\\|/").length;
+            final String regex = "[\\\\/]";
+            int s = b.split(regex).length - a.split(regex).length;
             if (s == 0) {
                 s = a.compareTo(b);
             }
@@ -223,7 +231,7 @@ public class PropertiesUtil {
      * @param fileName    文件名
      * @param inputStream 输入流
      */
-    private static void read(String fileName, InputStream inputStream) {
+    public static void read(String fileName, InputStream inputStream) {
 
         if (fileName == null || inputStream == null) {
             return;
@@ -247,6 +255,7 @@ public class PropertiesUtil {
                 fileNames.add(fileName);
             }
 
+            System.out.println(fileName);
             if (log.isDebugEnabled()) {
                 log.debug(fileName);
             }
@@ -304,7 +313,7 @@ public class PropertiesUtil {
      */
     private static void readYml(InputStream in) {
         Yaml yaml = new Yaml();
-        Map<String, String> dataMap = yaml.load(in);
+        Map<String, Object> dataMap = yaml.load(in);
         ymlToMap(properties, dataMap, null);
     }
 
@@ -315,19 +324,18 @@ public class PropertiesUtil {
      * @param map       递归用
      * @param parentKey 递归用
      */
-    private static void ymlToMap(Map<Object, Object> allMap, Map map, String parentKey) {
+    private static void ymlToMap(Map<Object, Object> allMap, Map<String, Object> map, String parentKey) {
         if (map == null) {
             return;
         }
-        for (Object o : map.entrySet()) {
-            Map.Entry entry = (Map.Entry) o;
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
             Object currentKey = entry.getKey();
             Object value = entry.getValue();
             if (value instanceof Map) {
                 if (parentKey == null) {
-                    ymlToMap(allMap, (Map) value, currentKey.toString());
+                    ymlToMap(allMap, (Map<String, Object>) value, currentKey.toString());
                 } else {
-                    ymlToMap(allMap, (Map) value, parentKey + PROPERTIES_KEY_SPLIT + currentKey.toString());
+                    ymlToMap(allMap, (Map<String, Object>) value, parentKey + PROPERTIES_KEY_SPLIT + currentKey.toString());
                 }
             } else if (value != null) {
                 if (parentKey == null) {
@@ -362,18 +370,40 @@ public class PropertiesUtil {
         return null;
     }
 
+    /**
+     * 获取所有配置
+     *
+     * @return 配置文件集合
+     */
     public static Properties getProperties() {
         return properties;
     }
 
+    /**
+     * 获取所有扫描到的配置文件名
+     *
+     * @return 文件名集
+     */
     public static Set<String> getFileNames() {
         return fileNames;
     }
 
+    /**
+     * 覆盖配置
+     *
+     * @param key   key
+     * @param value value
+     */
     public static void setProperties(String key, String value) {
         properties.setProperty(key, value);
     }
 
+    /**
+     * 为配置值叠加
+     *
+     * @param key   key
+     * @param value value
+     */
     public static void appendProperties(String key, String value) {
         String v = properties.getProperty(key);
         if (v == null) {
@@ -383,6 +413,12 @@ public class PropertiesUtil {
         }
     }
 
+    /**
+     * 取配置
+     *
+     * @param key key
+     * @return 值
+     */
     public static String getProperty(String key) {
         Object value = properties.get(key);
         if (value != null) {
@@ -392,7 +428,7 @@ public class PropertiesUtil {
     }
 
     /**
-     * 获取工程配置信息
+     * 获取工程配置信息带默认值
      *
      * @param key 句柄
      * @return 值
@@ -405,20 +441,34 @@ public class PropertiesUtil {
         return defaultValue;
     }
 
+    /**
+     * 根据前缀取配置
+     *
+     * @param prefix 前缀
+     * @return 配置集
+     */
     public static Properties getPropertyByPrefix(String prefix) {
-        Properties r = new Properties();
-        Set<String> propertyNames = properties.stringPropertyNames();
+        Properties properties = new Properties();
+        Set<String> propertyNames = PropertiesUtil.properties.stringPropertyNames();
         for (String name : propertyNames) {
             if (name.startsWith(prefix)) {
-                r.put(name, properties.get(name));
+                properties.put(name, PropertiesUtil.properties.get(name));
             }
         }
-        return r;
+        return properties;
 
     }
 
-    public static <T> T getProperty(String var1, Class<T> var2) {
-        return ObjectUtil.to(getProperty(var1), new TypeReference<T>(var2));
+    /**
+     * 取配置，并转换
+     *
+     * @param key   key
+     * @param clazz 转换类型
+     * @param <T>   泛型
+     * @return 结果
+     */
+    public static <T> T getProperty(String key, Class<T> clazz) {
+        return ObjectUtil.to(getProperty(key), new TypeReference<T>(clazz));
     }
 
     public static <T> T getProperty(String var1, Class<T> var2, String defaultValue) {

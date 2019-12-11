@@ -11,7 +11,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -60,7 +59,7 @@ public class PropertiesUtil {
     /**
      * 配置文件优先级
      */
-    private static final String[] overrideConfig = new String[]{"bootstrap", "application"};
+    private static final String[] overrideConfig = new String[]{"application"};
 
     /**
      * 日志
@@ -236,13 +235,9 @@ public class PropertiesUtil {
         if (fileName == null || inputStream == null) {
             return;
         }
-        ByteArrayOutputStream outputStream = toByteArrayOutputStream(inputStream);
-        if (outputStream == null) {
-            return;
-        }
+
         try {
 
-            inputStream = new ByteArrayInputStream(outputStream.toByteArray());
             if (fileName.endsWith(SupportEnum.properties.name())) {
                 readProperties(inputStream);
             } else if (fileName.endsWith(SupportEnum.yml.name()) || fileName.endsWith(SupportEnum.yaml.name())) {
@@ -259,7 +254,8 @@ public class PropertiesUtil {
             if (log.isDebugEnabled()) {
                 log.debug(fileName);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            e.printStackTrace();
             log.error(String.format("read file(%s) to properties is error", fileName), e);
         } finally {
             try {
@@ -346,28 +342,6 @@ public class PropertiesUtil {
                 }
             }
         }
-    }
-
-    /**
-     * 输入流，为重复读取流
-     *
-     * @param inputStream 输入流
-     * @return 用于重复读取的流对象
-     */
-    private static ByteArrayOutputStream toByteArrayOutputStream(InputStream inputStream) {
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = inputStream.read(buffer)) > -1) {
-                outputStream.write(buffer, 0, len);
-            }
-            outputStream.flush();
-            return outputStream;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     /**

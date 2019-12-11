@@ -348,7 +348,7 @@ public class ObjectUtil extends ObjectUtils {
         final String serialVersionUid = "serialVersionUID";
         try {
             Object newObject = clazz.newInstance();
-            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).parallelStream().filter(field -> {
+            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
                 field.setAccessible(true);
                 try {
                     if (serialVersionUid.equals(field.getName())) {

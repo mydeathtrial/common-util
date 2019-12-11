@@ -55,7 +55,7 @@ public class JarUtil {
         Set<String> set = Sets.newHashSet();
         try {
             Collections.list(JarUtil.class.getClassLoader().getResources(toEntryName(packagePath)))
-                    .parallelStream()
+                    .stream()
                     .map(path -> {
                         if (SupportEnum.jar.name().equals(path.getProtocol())) {
                             return path.getPath().substring(0, path.getPath().indexOf("!")).replace("file:", "");
@@ -92,7 +92,7 @@ public class JarUtil {
      * @return 文件路径集合
      */
     public static Set<String> getFile(JarFile jar, String packagePath, boolean isInclude, String... suffixes) {
-        return getFile(jar, packagePath).parallelStream().filter(name -> {
+        return getFile(jar, packagePath).stream().filter(name -> {
             if (name.endsWith(CLASSES_DIR_SPLIT)) {
                 return false;
             }
@@ -117,7 +117,7 @@ public class JarUtil {
     public static Set<String> getFile(JarFile jar, String packagePath) {
         String finalPackagePath = toEntryName(packagePath);
         return Collections.list(jar.entries())
-                .parallelStream()
+                .stream()
                 .filter(entry -> entry.getName().startsWith(finalPackagePath))
                 .map(entry -> CLASSES_DIR_SPLIT + entry.getName())
                 .collect(Collectors.toSet());

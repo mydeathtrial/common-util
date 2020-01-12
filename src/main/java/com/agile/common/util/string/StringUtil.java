@@ -6,6 +6,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -178,8 +179,12 @@ public class StringUtil extends StringUtils {
         return camelString.substring(0, 1).toLowerCase() + camelString.substring(1);
     }
 
-    public static String parsingPlaceholder(String openToken, String closeToken, String text, Map<?, ?> args) {
-        return parsingPlaceholder(openToken, closeToken, text, args, null);
+    public static String parsingPlaceholder(String openToken, String closeToken, String text, Map args) {
+        return parsingPlaceholder(openToken, closeToken, ":-", text, args, null);
+    }
+
+    public static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Map args) {
+        return parsingPlaceholder(openToken, closeToken, equalToken, text, args, null);
     }
 
     /**
@@ -192,10 +197,10 @@ public class StringUtil extends StringUtils {
      * @param replaceNull 代替空参占位
      * @return
      */
-    public static String parsingPlaceholder(String openToken, String closeToken, String text, Map<?, ?> args, String replaceNull) {
+    public static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Map args, String replaceNull) {
         if (args == null || args.size() <= 0) {
             if (replaceNull != null) {
-                args = Maps.newHashMap();
+                args = new HashMap(0);
             } else {
                 return text;
             }
@@ -236,6 +241,7 @@ public class StringUtil extends StringUtils {
                         end = text.indexOf(closeToken, offset);
                     } else {
                         expression.append(src, offset, end - offset);
+                        offset = end + closeToken.length();
                         break;
                     }
                 }
@@ -245,19 +251,23 @@ public class StringUtil extends StringUtils {
                     offset = src.length;
                 } else {
                     String key = expression.toString();
-                    String[] keyObj = key.split(":-");
+                    String[] keyObj = key.split(equalToken);
                     Object o;
                     String value;
+                    //判断是否有配置了默认值(:-)  by nhApis 2018.12.27
                     if (keyObj.length > 0) {
+                        //配置了默认值,使用key获取当前环境变量中是否已经配置  by nhApis 2018.12.27
                         o = args.get(keyObj[0]);
                     } else {
                         o = args.get(key);
                     }
 
                     if (o == null) {
-                        if (key.contains(":-")) {
+                        if (key.contains(equalToken)) {
+                            //获取不到使用默认值   by nhApis 2018.12.24
                             value = keyObj[1].trim();
                         } else if (replaceNull != null) {
+                            //获取不到环境变量时,返回原表达式 by nhApis 2018.12.24
                             value = replaceNull;
                         } else {
                             value = openToken + key + closeToken;

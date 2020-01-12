@@ -423,10 +423,10 @@ public class PropertiesUtil {
      */
     public static Properties getPropertyByPrefix(String prefix) {
         Properties properties = new Properties();
-        Set<String> propertyNames = PropertiesUtil.properties.stringPropertyNames();
+        Set<String> propertyNames = getProperties().stringPropertyNames();
         for (String name : propertyNames) {
             if (name.startsWith(prefix)) {
-                properties.put(name, PropertiesUtil.properties.get(name));
+                properties.put(name, getProperties().get(name));
             }
         }
         return properties;

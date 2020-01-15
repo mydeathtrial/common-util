@@ -41,7 +41,7 @@ public class DemoA {
     private BigDecimal bigDecimal;
 
     private List<Integer> integerList;
-    private LinkedList<Integer> integerLinkedList;
+    private List<?> integerLinkedList;
     private Set<Float> floatSet;
     private TreeSet<Float> floatTreeSet;
     private Queue<Long> longQueue;

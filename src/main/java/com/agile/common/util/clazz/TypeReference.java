@@ -135,7 +135,7 @@ public class TypeReference<T> {
         } else if (type instanceof ParameterizedTypeImpl) {
             return ((ParameterizedTypeImpl) type).getRawType();
         } else {
-            throw new RuntimeException();
+            return Object.class;
         }
     }
 

@@ -144,7 +144,7 @@ public class DateUtil {
 
             stream.forEach(e -> {
                 if (e.getKey().startsWith(YEAR)) {
-                    gregorianCalendar.set(Calendar.YEAR, Integer.parseInt(e.getValue()) + 1900);
+                    gregorianCalendar.set(Calendar.YEAR, Integer.parseInt(e.getValue()));
                 } else if (e.getKey().startsWith(MONTH)) {
                     gregorianCalendar.set(Calendar.MONTH, Integer.parseInt(e.getValue()));
                 } else if (e.getKey().startsWith(DATE)) {

@@ -60,7 +60,10 @@ public class TypeReference<T> {
      * @return 子泛型内容
      */
     public Type getParameterizedType(int index) {
-        return typeArguments[index];
+        if (typeArguments != null && typeArguments.length > index) {
+            return typeArguments[index];
+        }
+        return null;
     }
 
     /**

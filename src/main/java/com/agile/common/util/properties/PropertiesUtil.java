@@ -11,7 +11,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.yaml.snakeyaml.Yaml;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -369,6 +368,9 @@ public class PropertiesUtil {
      * @param value value
      */
     public static void setProperties(String key, String value) {
+        if (value == null) {
+            return;
+        }
         properties.setProperty(key, value);
     }
 

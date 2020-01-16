@@ -7,6 +7,8 @@ import com.agile.common.util.date.DateUtil;
 import com.agile.common.util.object.ObjectUtil;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -57,4 +59,9 @@ public class ObjectUtilTest {
         DateUtil.parse("19900905 11:12 下午");
     }
 
+    @Test
+    public void parseDate2() {
+        ObjectUtil.to(new ArrayList<String>(){{add("123");}}, new TypeReference<List>() {
+        });
+    }
 }

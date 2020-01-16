@@ -61,7 +61,7 @@ public class ObjectUtil extends ObjectUtils {
         } else if (toClass.isExtendsFrom(Date.class)) {
             // 日期类型转换
             result = (T) DateUtil.parse(from.toString()).getTime();
-        } else if (toClass.isAssignableFrom(from.getClass())) {
+        } else if (toClass.isAssignableFrom(from.getClass()) || toClass.getWrapperClass() == Object.class) {
             // 类型相同，直接返回
             result = (T) from;
         } else {
@@ -206,7 +206,7 @@ public class ObjectUtil extends ObjectUtils {
             if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class) || from.getClass().isArray()) {
                 Type nodeType = toClass.getParameterizedType(0);
                 if (nodeType == null) {
-                    return null;
+                    nodeType = Object.class;
                 }
 
                 Collection<?> collection;

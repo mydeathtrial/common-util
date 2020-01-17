@@ -15,6 +15,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -396,8 +397,16 @@ public class ObjectUtil extends ObjectUtils {
 
             //取方法入参类型与属性类型相同方法尝试
             try {
-                setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) fieldType);
-                invokeMethodIfParamNotNull(object, setMethod, value);
+                if (ParameterizedType.class.isAssignableFrom(fieldType.getClass())) {
+                    Type rawType = ((ParameterizedType) fieldType).getRawType();
+                    setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) rawType);
+                    invokeMethodIfParamNotNull(object, setMethod, to(value, new TypeReference<>(fieldType)));
+                } else {
+                    setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) fieldType);
+
+                    invokeMethodIfParamNotNull(object, setMethod, value);
+                }
+
             } catch (Exception ignored) {
             }
 

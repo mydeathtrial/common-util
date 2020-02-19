@@ -439,8 +439,14 @@ public class ObjectUtil extends ObjectUtils {
             } catch (Exception ignored) {
             }
 
-            //将来值类型与属性类型相同时，直接设置
-            setValueIfNotNull(object, field, value);
+            try {
+                if (Objects.equals(field.get(object), initValue)) {
+                    //将来值类型与属性类型相同时，直接设置
+                    setValueIfNotNull(object, field, value);
+                }
+            } catch (Exception ignored) {
+            }
+
         } else {
             if (!field.getType().isPrimitive()) {
                 try {

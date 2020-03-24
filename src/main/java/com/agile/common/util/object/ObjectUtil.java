@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -61,7 +62,12 @@ public class ObjectUtil extends ObjectUtils {
             result = (T) to(from, toClass.getWrapperClass());
         } else if (toClass.isExtendsFrom(Date.class)) {
             // 日期类型转换
-            result = (T) DateUtil.parse(from.toString()).getTime();
+            GregorianCalendar calendar = DateUtil.parse(from.toString());
+            if (calendar != null) {
+                result = (T) calendar.getTime();
+            } else {
+                result = null;
+            }
         } else if (toClass.isAssignableFrom(from.getClass()) || toClass.getWrapperClass() == Object.class) {
             // 类型相同，直接返回
             result = (T) from;

@@ -287,15 +287,58 @@ public class StringUtil extends StringUtils {
         return builder.toString();
     }
 
+    /**
+     * 删除扩展名
+     * @param str 字符串
+     * @return 删除扩展名以后的字符串
+     */
+    public static String removeExtension(String str) {
+        if (!isEmpty(str)) {
+            return str.substring(0,str.lastIndexOf(Constant.RegularAbout.SPOT));
+        }
+        return str;
+    }
+
+    /**
+     * 切割字符串成原子数组并取出指定下标下的原子
+     *
+     * @return 原子
+     */
+    public static String getSplitAtomic(String source, String regex, int index) {
+        if (source != null) {
+            String[] atomics = source.split(regex);
+            if (atomics.length > index) {
+                return atomics[index];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 切割字符串成原子数组并取出最后下标下的原子
+     *
+     * @return 原子
+     */
+    public static String getSplitLastAtomic(String source, String regex) {
+        if (source != null) {
+            String[] atomics = source.split(regex);
+            if (atomics.length > 0) {
+                return atomics[atomics.length - 1];
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) {
-        camelToMatchesRegex("asdDsa");
-        toUnderline("asdDsa");
-        toSeparator("asdDsa", ":");
-        Set<String> set = Sets.newHashSet();
-        set.add("user_name");
-        set.add("User_name");
-        set.add("usernamE");
-        set.add("_usernamE");
-        vagueMatches("userName", set);
+//        camelToMatchesRegex("asdDsa");
+//        toUnderline("asdDsa");
+//        toSeparator("asdDsa", ":");
+//        Set<String> set = Sets.newHashSet();
+//        set.add("user_name");
+//        set.add("User_name");
+//        set.add("usernamE");
+//        set.add("_usernamE");
+//        vagueMatches("userName", set);
+        System.out.println(removeExtension("s.s"));
     }
 }

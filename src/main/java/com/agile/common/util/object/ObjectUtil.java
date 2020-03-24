@@ -61,12 +61,16 @@ public class ObjectUtil extends ObjectUtils {
             // 基本类型转换
             result = (T) to(from, toClass.getWrapperClass());
         } else if (toClass.isExtendsFrom(Date.class)) {
-            // 日期类型转换
-            GregorianCalendar calendar = DateUtil.parse(from.toString());
-            if (calendar != null) {
-                result = (T) calendar.getTime();
+            if (from instanceof Date) {
+                result = (T) from;
             } else {
-                result = null;
+                // 日期类型转换
+                GregorianCalendar calendar = DateUtil.parse(from.toString());
+                if (calendar != null) {
+                    result = (T) calendar.getTime();
+                } else {
+                    result = null;
+                }
             }
         } else if (toClass.isAssignableFrom(from.getClass()) || toClass.getWrapperClass() == Object.class) {
             // 类型相同，直接返回

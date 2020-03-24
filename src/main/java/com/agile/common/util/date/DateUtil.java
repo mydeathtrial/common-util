@@ -2,6 +2,7 @@ package com.agile.common.util.date;
 
 import com.agile.common.util.pattern.PatternUtil;
 
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Map;
@@ -61,22 +62,45 @@ public class DateUtil {
      * @return JDK日历对象，可通过getTime()转换为Date对象
      */
     public static GregorianCalendar parse(String source) {
-        GregorianCalendar date = parseDate(source);
-        if (date != null) {
-            GregorianCalendar time = parseTime(source);
-            if (time != null) {
-                date.set(Calendar.HOUR, time.get(Calendar.HOUR));
-                date.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
-                date.set(Calendar.SECOND, time.get(Calendar.SECOND));
-                date.set(Calendar.AM_PM, time.get(Calendar.AM_PM));
+        String[] step = source.split("[\\s]");
+        GregorianCalendar gregorianCalendar = new GregorianCalendar();
+        if (step.length == 1) {
+            if (PatternUtil.matches(TIME_MILLIS_FORMAT, source)) {
+                gregorianCalendar = new GregorianCalendar();
+                gregorianCalendar.setTimeInMillis(Long.parseLong(source));
+            } else {
+                GregorianCalendar date = parseDate(step[0]);
+                if (date == null) {
+                    return parseTime(step[0]);
+                }
+            }
+        } else if (step.length > 1) {
+
+            gregorianCalendar = new GregorianCalendar();
+
+            boolean haveDate = false;
+            for (String s : step) {
+                if (!haveDate) {
+                    GregorianCalendar date = parseDate(s);
+                    if (date != null) {
+                        gregorianCalendar.set(date.get(Calendar.YEAR), date.get(Calendar.MONTH), date.get(Calendar.DATE));
+                        haveDate = true;
+                        continue;
+                    }
+                }
+                GregorianCalendar time = parseTime(s);
+                if (time != null) {
+                    gregorianCalendar.set(Calendar.HOUR, time.get(Calendar.HOUR));
+                    gregorianCalendar.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
+                    gregorianCalendar.set(Calendar.SECOND, time.get(Calendar.SECOND));
+                    gregorianCalendar.set(Calendar.AM_PM, time.get(Calendar.AM_PM));
+                }
             }
         } else {
-            if (PatternUtil.matches(TIME_MILLIS_FORMAT, source)) {
-                date = new GregorianCalendar();
-                date.setTimeInMillis(Long.parseLong(source));
-            }
+            return null;
         }
-        return date;
+
+        return gregorianCalendar;
     }
 
     /**
@@ -157,7 +181,8 @@ public class DateUtil {
     }
 
     public static void main(String[] args) {
-        parse(System.currentTimeMillis() + "");
+        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                .format(parse("2020-03-23 10:30:07.0").getTime()));
 
     }
 }

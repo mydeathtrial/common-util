@@ -9,6 +9,7 @@ import org.apache.commons.lang3.ClassUtils;
 import javax.annotation.Nullable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -198,6 +199,18 @@ public class ClassUtil extends ClassUtils {
         try {
             return clazz.newInstance();
         } catch (InstantiationException | IllegalAccessException ignored) {
+        }
+        try {
+            Method method = Class.class.getDeclaredMethod("privateGetDeclaredConstructors", boolean.class);
+            method.setAccessible(true);
+            Constructor<T>[] constructors = (Constructor<T>[]) method.invoke(clazz,false);
+            if(constructors.length>0){
+                Constructor<T> privateConstructor = constructors[0];
+                privateConstructor.setAccessible(true);
+                return privateConstructor.newInstance();
+            }
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
+            e.printStackTrace();
         }
         return null;
     }

@@ -162,7 +162,7 @@ public class DateUtil {
         }
         if (list != null) {
             GregorianCalendar gregorianCalendar = new GregorianCalendar();
-            gregorianCalendar.set(Calendar.MONTH, 1);
+            gregorianCalendar.set(Calendar.MONTH, 0);
             gregorianCalendar.set(Calendar.DATE, 1);
             Stream<Map.Entry<String, String>> stream = list.entrySet().stream().filter(e -> e.getValue() != null);
 
@@ -170,7 +170,7 @@ public class DateUtil {
                 if (e.getKey().startsWith(YEAR)) {
                     gregorianCalendar.set(Calendar.YEAR, Integer.parseInt(e.getValue()));
                 } else if (e.getKey().startsWith(MONTH)) {
-                    gregorianCalendar.set(Calendar.MONTH, Integer.parseInt(e.getValue()));
+                    gregorianCalendar.set(Calendar.MONTH, Integer.parseInt(e.getValue()) - 1);
                 } else if (e.getKey().startsWith(DATE)) {
                     gregorianCalendar.set(Calendar.DATE, Integer.parseInt(e.getValue()));
                 }

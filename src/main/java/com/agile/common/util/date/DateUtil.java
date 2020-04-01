@@ -90,7 +90,7 @@ public class DateUtil {
                 }
                 GregorianCalendar time = parseTime(s);
                 if (time != null) {
-                    gregorianCalendar.set(Calendar.HOUR, time.get(Calendar.HOUR));
+                    gregorianCalendar.set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY));
                     gregorianCalendar.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
                     gregorianCalendar.set(Calendar.SECOND, time.get(Calendar.SECOND));
                     gregorianCalendar.set(Calendar.AM_PM, time.get(Calendar.AM_PM));
@@ -116,7 +116,7 @@ public class DateUtil {
         }
         if (list != null) {
             GregorianCalendar gregorianCalendar = new GregorianCalendar();
-            gregorianCalendar.set(Calendar.HOUR, 0);
+            gregorianCalendar.set(Calendar.HOUR_OF_DAY, 0);
             gregorianCalendar.set(Calendar.MINUTE, 0);
             gregorianCalendar.set(Calendar.SECOND, 0);
             gregorianCalendar.set(Calendar.MILLISECOND, 0);
@@ -133,7 +133,7 @@ public class DateUtil {
                             gregorianCalendar.set(Calendar.AM_PM, Calendar.AM);
                         }
                     }
-                    gregorianCalendar.set(Calendar.HOUR, hour);
+                    gregorianCalendar.set(Calendar.HOUR_OF_DAY, hour);
 
                 } else if (e.getKey().startsWith(MINUTE)) {
                     gregorianCalendar.set(Calendar.MINUTE, Integer.parseInt(e.getValue()));
@@ -182,7 +182,7 @@ public class DateUtil {
 
     public static void main(String[] args) {
         System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                .format(parse("2020-03-23 10:30:07.0").getTime()));
+                .format(parse("2020-12-2 19:19:23").getTime()));
 
     }
 }

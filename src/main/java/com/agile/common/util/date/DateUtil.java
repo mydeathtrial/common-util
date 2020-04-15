@@ -1,10 +1,11 @@
 package com.agile.common.util.date;
 
+import com.agile.common.util.object.ObjectUtil;
 import com.agile.common.util.pattern.PatternUtil;
 
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -63,15 +64,37 @@ public class DateUtil {
      */
     public static GregorianCalendar parse(String source) {
         String[] step = source.split("[\\s]");
-        GregorianCalendar gregorianCalendar = new GregorianCalendar();
+        GregorianCalendar gregorianCalendar;
         if (step.length == 1) {
             if (PatternUtil.matches(TIME_MILLIS_FORMAT, source)) {
                 gregorianCalendar = new GregorianCalendar();
                 gregorianCalendar.setTimeInMillis(Long.parseLong(source));
             } else {
-                GregorianCalendar date = parseDate(step[0]);
-                if (date == null) {
-                    return parseTime(step[0]);
+                gregorianCalendar = parseDate(source);
+
+                if (gregorianCalendar == null) {
+                    return parseTime(source);
+                } else {
+                    List<String> list = PatternUtil.getMatched(ZERO_FILL_DATE_REGEX, source);
+                    if (ObjectUtil.isEmpty(list)) {
+                        list = PatternUtil.getMatched(DATE_REGEX, source);
+                    }
+                    if (ObjectUtil.isEmpty(list)) {
+                        list = PatternUtil.getMatched(DATE_SIMPLE_REGEX, source);
+                    }
+                    for (String node : list) {
+                        source = source.replace(node, "");
+                    }
+                    GregorianCalendar time = parseTime(source);
+
+                    if (time != null) {
+                        gregorianCalendar.set(gregorianCalendar.get(Calendar.YEAR),
+                                gregorianCalendar.get(Calendar.MONTH),
+                                gregorianCalendar.get(Calendar.DAY_OF_MONTH),
+                                time.get(Calendar.HOUR_OF_DAY),
+                                time.get(Calendar.MINUTE),
+                                time.get(Calendar.SECOND));
+                    }
                 }
             }
         } else if (step.length > 1) {
@@ -93,7 +116,6 @@ public class DateUtil {
                     gregorianCalendar.set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY));
                     gregorianCalendar.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
                     gregorianCalendar.set(Calendar.SECOND, time.get(Calendar.SECOND));
-                    gregorianCalendar.set(Calendar.AM_PM, time.get(Calendar.AM_PM));
                 }
             }
         } else {
@@ -115,33 +137,24 @@ public class DateUtil {
             list = PatternUtil.getGroups(TIME_REGEX, source);
         }
         if (list != null) {
-            GregorianCalendar gregorianCalendar = new GregorianCalendar();
-            gregorianCalendar.set(Calendar.HOUR_OF_DAY, 0);
-            gregorianCalendar.set(Calendar.MINUTE, 0);
-            gregorianCalendar.set(Calendar.SECOND, 0);
-            gregorianCalendar.set(Calendar.MILLISECOND, 0);
+            int hourOfDay = 0;
+            int minute = 0;
+            int second = 0;
 
-            Stream<Map.Entry<String, String>> stream = list.entrySet().stream().filter(e -> e.getValue() != null);
-
-            stream.forEach(e -> {
-                if (e.getKey().startsWith(HOUR)) {
-                    int hour = Integer.parseInt(e.getValue());
-                    if (hour < 12) {
-                        if (PatternUtil.find(PM_FORMAT, source)) {
-                            gregorianCalendar.set(Calendar.AM_PM, Calendar.PM);
-                        } else {
-                            gregorianCalendar.set(Calendar.AM_PM, Calendar.AM);
-                        }
-                    }
-                    gregorianCalendar.set(Calendar.HOUR_OF_DAY, hour);
-
-                } else if (e.getKey().startsWith(MINUTE)) {
-                    gregorianCalendar.set(Calendar.MINUTE, Integer.parseInt(e.getValue()));
-                } else if (e.getKey().startsWith(SECOND)) {
-                    gregorianCalendar.set(Calendar.SECOND, Integer.parseInt(e.getValue()));
+            for (Map.Entry<String, String> entry : list.entrySet()) {
+                if (entry.getValue() == null) {
+                    continue;
                 }
-            });
-            return gregorianCalendar;
+                if (entry.getKey().startsWith(HOUR)) {
+                    hourOfDay = Integer.parseInt(entry.getValue());
+                } else if (entry.getKey().startsWith(MINUTE)) {
+                    minute = Integer.parseInt(entry.getValue());
+                } else if (entry.getKey().startsWith(SECOND)) {
+                    second = Integer.parseInt(entry.getValue());
+                }
+            }
+
+            return new GregorianCalendar(0, 0, 0, hourOfDay, minute, second);
         }
         return null;
     }
@@ -180,9 +193,10 @@ public class DateUtil {
         return null;
     }
 
-    public static void main(String[] args) {
-        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-                .format(parse("2020-12-2 19:19:23").getTime()));
-
-    }
+//    public static void main(String[] args) {
+//        GregorianCalendar gregorianCalendar = parse("2020-04-23 09:38:00");
+//        String s = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(gregorianCalendar.getTime());
+//        System.out.println(s);
+//
+//    }
 }

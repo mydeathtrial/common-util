@@ -6,7 +6,7 @@
 
     <groupId>com.agileframework</groupId>
     <artifactId>common-util</artifactId>
-    <version>0.4</version>
+    <version>0.5</version>
     <packaging>jar</packaging>
 
     <properties>

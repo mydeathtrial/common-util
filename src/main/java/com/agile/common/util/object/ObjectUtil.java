@@ -5,9 +5,11 @@ import com.agile.common.util.array.ArrayUtil;
 import com.agile.common.util.clazz.ClassUtil;
 import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.date.DateUtil;
+import com.agile.common.util.json.JSONUtil;
 import com.agile.common.util.map.MapUtil;
 import com.agile.common.util.number.NumberUtil;
 import com.agile.common.util.string.StringUtil;
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ObjectUtils;
 
@@ -267,7 +269,7 @@ public class ObjectUtil extends ObjectUtils {
         if (from == null || toClass.isAssignableFrom(from.getClass())) {
             return (T) from;
         }
-        final Class sourceClass = from.getClass();
+        final Class<?> sourceClass = from.getClass();
         if (sourceClass.isPrimitive() || Iterable.class.isAssignableFrom(sourceClass)) {
             return null;
         }
@@ -291,6 +293,11 @@ public class ObjectUtil extends ObjectUtils {
                 if (!isNotChange(object)) {
                     return object;
                 }
+            }
+        } else if (from instanceof String) {
+            Object json = JSONUtil.parse((String) from);
+            if (json instanceof JSON) {
+                return toPOJO(json, toClass);
             }
         } else {
             T object = ClassUtil.newInstance(toClass);

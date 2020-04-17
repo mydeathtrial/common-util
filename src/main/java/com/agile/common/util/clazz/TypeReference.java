@@ -1,5 +1,6 @@
 package com.agile.common.util.clazz;
 
+import com.agile.common.util.array.ArrayUtil;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.lang.reflect.Constructor;
@@ -22,7 +23,7 @@ public class TypeReference<T> {
     /**
      * 泛型<T>的子泛型
      */
-    private final Type[] typeArguments;
+    private Type[] typeArguments;
 
     public TypeReference() {
         Type genType = getClass().getGenericSuperclass();
@@ -64,6 +65,14 @@ public class TypeReference<T> {
             return typeArguments[index];
         }
         return null;
+    }
+
+    /**
+     * 添加类的ParameterizedType
+     * @param type
+     */
+    public void addParameterizedType(Type type) {
+        typeArguments = ArrayUtil.add(typeArguments, type);
     }
 
     /**

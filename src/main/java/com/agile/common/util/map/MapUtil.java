@@ -123,7 +123,8 @@ public class MapUtil {
      */
     public static <K, V, K1, V1> Map<K, V> toMap(Map<K1, V1> from, TypeReference<Map<K, V>> toClass) {
         if (!toClass.hasParameterizedType()) {
-            throw new IllegalArgumentException("Illegal second parameter");
+            toClass.addParameterizedType(String.class);
+            toClass.addParameterizedType(Object.class);
         }
         Map<K, V> result;
         Class wrapperClass = toClass.getWrapperClass();

@@ -1,5 +1,6 @@
 package com.agile.common.util.object;
 
+import com.agile.common.annotation.Alias;
 import com.agile.common.constant.Constant;
 import com.agile.common.util.array.ArrayUtil;
 import com.agile.common.util.clazz.ClassUtil;
@@ -8,14 +9,19 @@ import com.agile.common.util.date.DateUtil;
 import com.agile.common.util.json.JSONUtil;
 import com.agile.common.util.map.MapUtil;
 import com.agile.common.util.number.NumberUtil;
+import com.agile.common.util.pattern.PatternUtil;
 import com.agile.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Maps;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -796,10 +802,406 @@ public class ObjectUtil extends ObjectUtils {
         if (field == null) {
             return null;
         }
-        try {
-            return field.get(o);
-        } catch (IllegalAccessException e) {
+        return getFieldValue(o, field);
+    }
+
+    /**
+     * 取属性值
+     *
+     * @param o     对象
+     * @param field 属性
+     * @return 值
+     */
+    public static Object getFieldValue(Object o, Field field) {
+        if (field == null) {
             return null;
         }
+        try {
+            String getMethodName = "get" + StringUtil.toLowerName(field.getName());
+            Method getMethod = o.getClass().getMethod(getMethodName);
+            getMethod.setAccessible(true);
+            return getMethod.invoke(o);
+        } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
+            try {
+                field.setAccessible(true);
+                return field.get(o);
+            } catch (IllegalAccessException ex) {
+                return null;
+            }
+        }
+    }
+
+    /**
+     * 从Map对象中获取指定类型对象
+     *
+     * @param clazz 想要获取的对象类型
+     * @param map   属性集合
+     * @return 返回指定对象类型对象
+     */
+    public static <T> T getObjectFromMap(Class<T> clazz, Map<?, ?> map) {
+        return getObjectFromMap(clazz, map, "", "");
+    }
+
+    /**
+     * 从Map对象中获取指定类型对象
+     *
+     * @param clazz 想要获取的对象类型
+     * @param map   属性集合
+     * @return 返回指定对象类型对象
+     */
+    public static <T> T getObjectFromMap(Class<T> clazz, Map<String, Object> map, String prefix) {
+        return getObjectFromMap(clazz, map, prefix, "");
+    }
+
+    /**
+     * 从Map对象中获取指定类型对象
+     *
+     * @param clazz  想要获取的对象类型
+     * @param map    属性集合
+     * @param prefix 属性前缀
+     * @return 返回指定对象类型对象
+     */
+    public static <T> T getObjectFromMap(Class<T> clazz, Map<?, ?> map, String prefix, String suffix) {
+        if (Map.class.isAssignableFrom(clazz)) {
+            return (T) map;
+        }
+        if (!ObjectUtil.isEmpty(map)) {
+            try {
+                T object = clazz.newInstance();
+
+                Set<Field> fields = ClassUtil.getAllField(clazz);
+                fields.forEach(field -> {
+                    String key = coverFieldNameToMapKey(clazz, field, prefix, suffix, map);
+                    if (key != null) {
+                        try {
+                            Object value = map.get(key);
+
+                            setValue(object, field, value);
+                        } catch (IllegalArgumentException ignored) {
+                        }
+                    }
+                });
+                if (!isAllNullValidity(object)) {
+                    return object;
+                }
+            } catch (InstantiationException | IllegalAccessException ignored) {
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 在map集中根据类属性名字推断对应key值
+     *
+     * @param clazz  类
+     * @param field  字段
+     * @param prefix 前缀
+     * @param suffix 后缀
+     * @param map    集合
+     * @return key值
+     */
+    public static String coverFieldNameToMapKey(Class<?> clazz, Field field, String prefix, String suffix, Map<?, ?> map) {
+        String propertyName = prefix + field.getName() + suffix;
+
+        String propertyRegex = StringUtil.camelToMatchesRegex(propertyName);
+        Set<String> keys = new HashSet<>();
+        for (Object key : map.keySet()) {
+            if (PatternUtil.matches(propertyRegex, key.toString())) {
+                keys.add(key.toString());
+            }
+        }
+
+        String key = null;
+
+        if (keys.size() > 1) {
+            if (keys.contains(propertyName)) {
+                key = propertyName;
+            } else {
+                String camelToUnderlineKey = StringUtil.toUnderline(propertyName);
+                String camelToUnderlineKeyUpper = camelToUnderlineKey.toUpperCase();
+                String camelToUnderlineKeyLower = camelToUnderlineKey.toLowerCase();
+
+                if (keys.contains(camelToUnderlineKey)) {
+                    key = camelToUnderlineKey;
+                } else if (keys.contains(camelToUnderlineKeyUpper)) {
+                    key = camelToUnderlineKeyUpper;
+                } else if (keys.contains(camelToUnderlineKeyLower)) {
+                    key = camelToUnderlineKeyLower;
+                }
+            }
+        } else if (keys.size() == 1) {
+            key = keys.iterator().next();
+        }
+
+        if (key == null) {
+            try {
+                Alias column = getAllEntityPropertyAnnotation(clazz, field, Alias.class);
+                if (column == null) {
+                    return null;
+                }
+                for (String alias : column.value()) {
+                    if (map.containsKey(alias)) {
+                        key = alias;
+                        break;
+                    }
+                }
+
+            } catch (Exception ignored) {
+            }
+        }
+        return key;
+    }
+
+    /**
+     * 获取所有字段注解
+     *
+     * @param clazz 类
+     * @return 注解结果集
+     */
+    public static <T extends Annotation> T getAllEntityPropertyAnnotation(Class clazz, Field field, Class<T> annotation) throws NoSuchMethodException {
+        T result = null;
+        T fieldDeclaredAnnotations = field.getDeclaredAnnotation(annotation);
+        if (fieldDeclaredAnnotations != null) {
+            result = fieldDeclaredAnnotations;
+        }
+
+        T fieldAnnotations = field.getAnnotation(annotation);
+        if (fieldAnnotations != null) {
+            result = fieldAnnotations;
+        }
+
+        String getMethodName = String.format("get%s", StringUtil.toUpperName(field.getName()));
+        Method declaredMethod = clazz.getDeclaredMethod(getMethodName);
+        T methodDeclaredAnnotations = declaredMethod.getDeclaredAnnotation(annotation);
+        if (methodDeclaredAnnotations != null) {
+            result = methodDeclaredAnnotations;
+        }
+
+        Method method = clazz.getMethod(getMethodName);
+        T methodAnnotations = method.getAnnotation(annotation);
+        if (methodAnnotations != null) {
+            result = methodAnnotations;
+        }
+
+        return result;
+    }
+
+    /**
+     * 判断对象属性是否全空
+     */
+    public static boolean isAllNullValidity(Object object) {
+        Class<?> clazz = object.getClass();
+        final String serialVersionUID = "serialVersionUID";
+        try {
+            Object newObject = clazz.newInstance();
+            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
+                field.setAccessible(true);
+                try {
+                    if (serialVersionUID.equals(field.getName())) {
+                        return false;
+                    }
+                    Object currentValue = field.get(object);
+                    Object initValue = field.get(newObject);
+                    return currentValue != null && currentValue != initValue;
+                } catch (Exception e) {
+                    return false;
+                }
+
+            }).collect(Collectors.toSet());
+
+            return haveValueFields.size() == 0;
+        } catch (InstantiationException | IllegalAccessException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 对象转字符串
+     *
+     * @param o       对象
+     * @param exclude 排除转换的字段名字
+     * @return 字符串
+     */
+    public static String objectToString(Object o, String... exclude) {
+        Class<?> clazz = o.getClass();
+        StringBuilder target = new StringBuilder(clazz.getSimpleName()).append("{");
+        Set<Field> fields = ClassUtil.getAllField(clazz);
+        int i = 0;
+        for (Field field : fields) {
+            try {
+                if (ArrayUtil.contains(exclude, field.getName())) {
+                    i++;
+                    continue;
+                }
+                field.setAccessible(true);
+                if (i != 0) {
+                    target.append(", ");
+                }
+                target.append(field.getName()).append("='").append(field.get(o));
+                if (i == fields.size() - 1) {
+                    target.append('}');
+                } else {
+                    target.append('\'');
+                }
+            } catch (IllegalAccessException e) {
+                continue;
+            }
+            i++;
+        }
+        return target.toString();
+    }
+
+    /**
+     * 对象转属性下划线式key值Map结构
+     *
+     * @param o 对象
+     * @return Map
+     */
+    public static Map<String, Object> getUnderlineMapFromObject(Object o) {
+        Field[] fields = o.getClass().getDeclaredFields();
+        Map<String, Object> result = new HashMap<>(fields.length);
+        if (fields.length > 0) {
+            for (Field field : fields) {
+                field.setAccessible(true);
+                String key = StringUtil.toUnderline(field.getName());
+                try {
+                    result.put(key, field.get(o));
+                } catch (IllegalAccessException ignored) {
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 对象集转Map集，转属性下划线式key值
+     *
+     * @param list 对象集合
+     * @return map集合
+     */
+    public static List<Map<String, Object>> getUnderlineMapFromListObject(Iterable<Object> list) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (list != null) {
+            for (Object o : list) {
+                result.add(getUnderlineMapFromObject(o));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 比较两个对象属性是否相同
+     *
+     * @param source 源对象
+     * @param target 目标对象
+     * @return 是否相同
+     */
+    public static boolean compare(Object source, Object target) {
+        return isEmpty(source) && isEmpty(target) || source.equals(target);
+    }
+
+    /**
+     * 获取两个对象的不同属性列表
+     *
+     * @param source 源对象
+     * @param target 目标对象
+     * @return 值不相同的属性列表
+     * @throws IllegalAccessException 调用过程异常
+     */
+    public static List<Different> getDifferenceProperties(Object source, Object target, String... excludeProperty) throws IllegalAccessException {
+        if ((!ClassUtil.compareClass(source, target) || compare(source, target) || isEmpty(source)) != isEmpty(target)) {
+            return null;
+        }
+        List<Different> result = new ArrayList<>();
+        Object sourceObject = isEmpty(source) ? target : source;
+        Object targetObject = isEmpty(source) ? source : target;
+        Class sourceClass = sourceObject.getClass();
+        Set<Field> fields = ClassUtil.getAllField(sourceClass);
+        for (Field field : fields) {
+            field.setAccessible(true);
+            if (excludeProperty != null && ArrayUtil.contains(excludeProperty, field.getName())) {
+                continue;
+            }
+            Object sourceValue = field.get(sourceObject);
+            Object targetValue = field.get(targetObject);
+            if (compare(sourceValue, targetValue)) {
+                continue;
+            }
+
+            result.add(new Different(field.getName(), field.getType().getTypeName(), String.valueOf(targetValue), String.valueOf(sourceValue)));
+        }
+        return result;
+    }
+
+    /**
+     * 比较两个对象属性是否相同
+     *
+     * @param source 源对象
+     * @param target 目标对象
+     * @return 是否相同
+     */
+    public static boolean compareValue(Object source, Object target, String... excludeProperty) {
+        if (isEmpty(source)) {
+            return isEmpty(target);
+        } else {
+            if (isEmpty(target)) {
+                return false;
+            }
+            try {
+                List<Different> list = getDifferenceProperties(source, target, excludeProperty);
+                if (list != null && list.size() > 0) {
+                    return false;
+                }
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 区别信息
+     */
+    @Data
+    @AllArgsConstructor
+    public static class Different {
+        private final String propertyName;
+        private final String propertyType;
+        private final String newValue;
+        private final String oldValue;
+    }
+
+    /**
+     * 只比较source中不为空的字段
+     * @param source 原对象
+     * @param target 目标对象
+     * @return 是否
+     */
+    public static boolean compareOfNotNull(Object source, Object target) {
+        Field[] fields = source.getClass().getDeclaredFields();
+        for (Field field : fields) {
+            field.setAccessible(true);
+            if ("serialVersionUID".equals(field.getName())) {
+                continue;
+            }
+            try {
+                Object sourceValue = field.get(source);
+                if (sourceValue == null) {
+                    continue;
+                }
+                Object targetValue = field.get(target);
+                if (!sourceValue.equals(targetValue)) {
+                    return false;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(to(123,new TypeReference<String>(){}));;
     }
 }

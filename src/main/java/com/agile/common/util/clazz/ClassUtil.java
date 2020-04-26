@@ -1,15 +1,21 @@
 package com.agile.common.util.clazz;
 
 import com.agile.common.constant.Constant;
+import com.agile.common.util.object.ObjectUtil;
 import com.agile.common.util.pattern.PatternUtil;
 import com.agile.common.util.string.StringUtil;
 import com.google.common.collect.Sets;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.ClassUtils;
 
 import javax.annotation.Nullable;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -203,8 +209,8 @@ public class ClassUtil extends ClassUtils {
         try {
             Method method = Class.class.getDeclaredMethod("privateGetDeclaredConstructors", boolean.class);
             method.setAccessible(true);
-            Constructor<T>[] constructors = (Constructor<T>[]) method.invoke(clazz,false);
-            if(constructors.length>0){
+            Constructor<T>[] constructors = (Constructor<T>[]) method.invoke(clazz, false);
+            if (constructors.length > 0) {
                 Constructor<T> privateConstructor = constructors[0];
                 privateConstructor.setAccessible(true);
                 return privateConstructor.newInstance();
@@ -242,5 +248,83 @@ public class ClassUtil extends ClassUtils {
      */
     public static boolean isPrimitive(Class<?> clazz) {
         return clazz.isPrimitive();
+    }
+
+    public static Method getMethod(Class clazz, String fieldName) {
+        Set<Method> methods = getAllMethod(clazz);
+        for (Method method : methods) {
+            if (method.getName().equals(fieldName)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 目标
+     *
+     * @param <A> 注解类型
+     */
+    @Data
+    @EqualsAndHashCode
+    @AllArgsConstructor
+    public static class Target<A extends Annotation> {
+        private Member member;
+        private A annotation;
+    }
+
+    public static <A extends Annotation> Set<Target<A>> getAllFieldAnnotation(Class<?> clazz, Class<A> annotationClass) {
+        Set<Field> fields = getAllField(clazz);
+        Set<Target<A>> set = new HashSet<>();
+        for (Field field : fields) {
+            A annotation = field.getAnnotation(annotationClass);
+            if (annotation != null) {
+                set.add(new Target<>(field, annotation));
+            }
+        }
+        return set;
+    }
+
+    public static <A extends Annotation> Set<Target<A>> getAllMethodAnnotation(Class<?> clazz, Class<A> annotationClass) {
+        Set<Method> fields = getAllMethod(clazz);
+        Set<Target<A>> set = new HashSet<>();
+        for (Method method : fields) {
+            A annotation = method.getAnnotation(annotationClass);
+            if (annotation != null) {
+                set.add(new Target<>(method, annotation));
+            }
+        }
+        return set;
+    }
+
+    /**
+     * 获取所有字段注解
+     *
+     * @param clazz 类
+     * @return 注解结果集
+     */
+    public static <A extends Annotation> Set<Target<A>> getAllEntityAnnotation(Class<?> clazz, Class<A> annotation) {
+        Set<Target<A>> fieldAnnotation = getAllFieldAnnotation(clazz, annotation);
+        Set<Target<A>> methodAnnotation = getAllMethodAnnotation(clazz, annotation);
+        for (Target<A> target : methodAnnotation) {
+            String name = target.getMember().getName();
+            if (name.startsWith("get")) {
+                final int length = 3;
+                Field targetField = getField(clazz, StringUtil.toLowerName(name.substring(length)));
+                fieldAnnotation.add(new Target<A>(targetField, target.getAnnotation()));
+            }
+        }
+        return fieldAnnotation;
+    }
+
+    /**
+     * 比较两个对象是否继承于同一个类
+     *
+     * @param source 源对象
+     * @param target 目标对象
+     * @return 是否相同
+     */
+    public static Boolean compareClass(Object source, Object target) {
+        return ObjectUtil.isEmpty(source) ? ObjectUtil.isEmpty(target) : (!ObjectUtil.isEmpty(target) && source.getClass() == (target.getClass()));
     }
 }

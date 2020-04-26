@@ -123,7 +123,7 @@ public class JSONUtil extends JSON {
                 } else if (JSONArray.class.isAssignableFrom(o.getClass())) {
                     result.add(jsonArrayCoverArray((JSONArray) o));
                 }
-            } else {
+            } else if (o != null) {
                 result.add(o);
             }
         }

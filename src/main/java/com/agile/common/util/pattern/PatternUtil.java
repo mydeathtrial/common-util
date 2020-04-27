@@ -1,9 +1,11 @@
 package com.agile.common.util.pattern;
 
+import com.agile.common.util.string.StringUtil;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -98,6 +100,26 @@ public class PatternUtil {
      *
      * @param regex 正则表达式
      * @param text  正文
+     * @param index 第几组
+     * @return 匹配的字符串
+     */
+    public static String getMatchedString(String regex, String text, int index) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex, 0));
+        int i = 0;
+        while (matcher.find()) {
+            if (i == index) {
+                return matcher.group();
+            }
+            i++;
+        }
+        return null;
+    }
+
+    /**
+     * 获取字符串中匹配正则表达式的部分
+     *
+     * @param regex 正则表达式
+     * @param text  正文
      * @return 匹配的字符串
      */
     public static List<String> getMatched(String regex, String text) {
@@ -124,5 +146,72 @@ public class PatternUtil {
             return result;
         }
         return null;
+    }
+
+    /**
+     * 获取字符串中匹配正则表达式的部分
+     *
+     * @param regex 正则表达式
+     * @param text  正文
+     * @return 匹配的字符串
+     */
+    public static String[] getMatchedString(String regex, String text) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex));
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            sb.append(matcher.group()).append(",");
+        }
+        if (StringUtil.isEmpty(sb.toString())) {
+            return null;
+        }
+        return sb.toString().split(",");
+    }
+
+    /**
+     * 获取字符串中匹配正则表达式的部分
+     *
+     * @param regex 正则表达式
+     * @param text  正文
+     * @param index 第几个
+     * @return 匹配的字符串
+     */
+    public static String getGroupString(String regex, String text, int index) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex));
+        int count = matcher.groupCount();
+        if (count > 0) {
+            if (matcher.find()) {
+                return matcher.group(index);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 匹配出正则表达式中所有的括号内容
+     *
+     * @param regex 正则
+     * @param text  目标串
+     * @return 按顺序匹配出来的括号内容
+     */
+    public static LinkedList<String> getGroupString(String regex, String text) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex));
+
+        int count = matcher.groupCount();
+
+        if (count > 0) {
+            LinkedList<String> temp = new LinkedList<>();
+            if (matcher.find()) {
+                for (int i = 1; i < count + 1; i++) {
+                    temp.add(matcher.group(i));
+                }
+            }
+            return temp;
+        }
+        return null;
+    }
+
+
+    public static void main(String[] args) {
+        PatternUtil.getGroupString("([\\d]{2})tudou","11tudou22tudouwqtudou");
     }
 }

@@ -1,5 +1,6 @@
 package com.agile.common.util.map;
 
+import com.agile.common.constant.Constant;
 import com.agile.common.util.clazz.ClassUtil;
 import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.object.ObjectUtil;
@@ -176,12 +177,40 @@ public class MapUtil {
         return map;
     }
 
-    public static Map addPrefix(Map<String, Object> from, String prefix) {
+    /**
+     * Map所有key添加前缀
+     * @param from 转换的map
+     * @param prefix 前缀
+     * @return 新Map
+     */
+    public static Map<String, Object> addPrefix(Map<String, Object> from, String prefix) {
         Map<String, Object> toMap = Maps.newHashMapWithExpectedSize(from.size());
-        from.entrySet().stream().forEach(e -> {
-            toMap.put(prefix + e.getKey(), e.getValue());
-        });
+        from.forEach((key, value) -> toMap.put(prefix + key, value));
         return toMap;
+    }
+
+    /**
+     * map格式转url参数路径
+     *
+     * @param map 参数集合
+     * @return url参数
+     */
+    public static String toUrl(Map<String, Object> map) {
+        StringBuilder mapOfString = new StringBuilder(Constant.RegularAbout.BLANK);
+        for (Map.Entry<String, Object> entity : map.entrySet()) {
+            Object value = entity.getValue();
+            if (value.getClass().isArray()) {
+                for (Object v : (Object[]) value) {
+                    mapOfString.append(Constant.RegularAbout.AND).append(entity.getKey());
+                    mapOfString.append(Constant.RegularAbout.EQUAL).append(v);
+                }
+            } else {
+                mapOfString.append(Constant.RegularAbout.AND).append(entity.getKey());
+                mapOfString.append(Constant.RegularAbout.EQUAL).append(entity.getValue());
+            }
+        }
+        String urlParam = mapOfString.toString();
+        return urlParam.startsWith(Constant.RegularAbout.AND) ? urlParam.substring(1) : urlParam;
     }
 
     public static void main(String[] args) {

@@ -1,12 +1,16 @@
 package com.agile.common.util.string;
 
 import com.agile.common.constant.Constant;
+import com.agile.common.util.array.ArrayUtil;
 import com.agile.common.util.pattern.PatternUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -329,15 +333,129 @@ public class StringUtil extends StringUtils {
         return null;
     }
 
+    /**
+     * 从el表达式中获取key、value，如{key:value}
+     *
+     * @param el        需要处理的字符串
+     * @param startChar 开始字符串如{
+     * @param endChar   结束字符串如}
+     * @param equalChar 中间字符串如：
+     * @return 返回处理后的map集合
+     */
+    public static Map<String, String> getGroupByStartEnd(String el, String startChar, String endChar, String equalChar) {
+        Map<String, String> map = new LinkedHashMap<>();
+        int index = el.indexOf(startChar);
+        if (index == -1) {
+            return map;
+        }
+
+        String last = el;
+        while (index > -1 && index < el.length()) {
+            int end;
+            int first = last.indexOf(startChar);
+            last = last.substring(first + startChar.length());
+            index += (first + startChar.length());
+            end = last.indexOf(endChar);
+            if (end == -1) {
+                return map;
+            }
+            String mapV = last.substring(0, end);
+
+            int consume = end + endChar.length();
+            index += consume;
+
+            last = last.substring(consume);
+
+            String[] mapVs = mapV.split(equalChar);
+            map.put(mapVs[0], mapVs.length > 1 ? mapVs[1] : null);
+        }
+        return map;
+    }
+
+    public static Map<String, String> getParamFromMapping(String url, String mapUrl) {
+        final String left = "{";
+        final String right = "}";
+        final String equal = ":";
+        final int minLength = 2;
+        if (StringUtil.isEmpty(mapUrl) || mapUrl.length() <= minLength) {
+            return null;
+        }
+        if (!mapUrl.contains(left) || !mapUrl.contains(right)) {
+            return null;
+        }
+        Map<String, String> result = new LinkedHashMap<>();
+        Map<String, String> map;
+        if (mapUrl.contains(equal)) {
+            map = getGroupByStartEnd(mapUrl, left, right, equal);
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+                String value = PatternUtil.getMatchedString(entry.getValue(), url, 0);
+                if (isBlank(value)) {
+                    return null;
+                }
+                result.put(entry.getKey(), value);
+                int start = url.indexOf(value);
+                url = url.substring(start + value.length());
+            }
+        } else {
+            result.put(mapUrl.substring(1, mapUrl.length() - 1), url);
+        }
+
+
+        return result;
+    }
+
+    /**
+     * 比较长短
+     */
+    public static boolean compareTo(String resource, String target) {
+        return resource.length() > target.length();
+    }
+
+    /**
+     * 字符数组转16进制字符串
+     */
+    public static String coverToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        if (ArrayUtil.isEmpty(bytes)) {
+            return null;
+        }
+
+        final int length = 0xFF;
+        final int two = 2;
+        for (int i = 0; i < bytes.length; i++) {
+            int v = bytes[i] & length;
+            String hv = Integer.toHexString(v);
+            if (hv.length() < two) {
+                result.append(0);
+            }
+            result.append(hv);
+        }
+        return result.toString().toUpperCase();
+    }
+
+    /**
+     * 异常转字符串
+     *
+     * @param e 异常
+     * @return 字符串
+     */
+    public static String exceptionToString(Throwable e) {
+        StringWriter writer = new StringWriter();
+        try (PrintWriter pw = new PrintWriter(writer);) {
+            e.printStackTrace(pw);
+        }
+        return writer.toString();
+    }
+
     public static void main(String[] args) {
 //        camelToMatchesRegex("asdDsa");
-//        toUnderline("asdDsa");
+        toUnderline("asdDsa");
 //        toSeparator("asdDsa", ":");
 //        Set<String> set = Sets.newHashSet();
 //        set.add("user_name");
 //        set.add("User_name");
 //        set.add("usernamE");
-//        set.add("_usernamE");
+//        set.add("_usernamE");getGroupByStartEnd
 //        vagueMatches("userName", set);
         System.out.println(removeExtension("s.s"));
     }

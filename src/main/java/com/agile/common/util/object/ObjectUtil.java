@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -906,7 +907,7 @@ public class ObjectUtil extends ObjectUtils {
         String propertyRegex = StringUtil.camelToMatchesRegex(propertyName);
         Set<String> keys = new HashSet<>();
         for (Object key : map.keySet()) {
-            if (PatternUtil.matches(propertyRegex, key.toString())) {
+            if (PatternUtil.matches(propertyRegex, key.toString(), Pattern.CASE_INSENSITIVE)) {
                 keys.add(key.toString());
             }
         }

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * @author 佟盟
@@ -138,7 +139,7 @@ public class ClassUtil extends ClassUtils {
         Map<String, Field> targetFields = new HashMap<>(Constant.NumberAbout.ONE);
         String targetFieldName = StringUtil.camelToMatchesRegex(fieldName);
         for (Field field : fields) {
-            if (PatternUtil.matches(targetFieldName, field.getName())) {
+            if (PatternUtil.matches(targetFieldName, field.getName(), Pattern.CASE_INSENSITIVE)) {
                 field.setAccessible(true);
                 targetFields.put(field.getName(), field);
             }

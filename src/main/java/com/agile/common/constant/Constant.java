@@ -69,6 +69,7 @@ public class Constant {
      * 正则表达式
      */
     public static class RegularAbout {
+        public static final String NEW_LINE = "\n";
         public static final String NULL = "null";
         public static final String MINUS = "-";
         public static final String BLANK = "";

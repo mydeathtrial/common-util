@@ -2,9 +2,10 @@ package com.agile.common.util.string;
 
 import com.agile.common.constant.Constant;
 import com.agile.common.util.array.ArrayUtil;
+import com.agile.common.util.json.JSONUtil;
 import com.agile.common.util.pattern.PatternUtil;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.PrintWriter;
@@ -201,8 +202,8 @@ public class StringUtil extends StringUtils {
      * @param replaceNull 代替空参占位
      * @return
      */
-    public static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Map args, String replaceNull) {
-        if (args == null || args.size() <= 0) {
+    private static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Object args, String replaceNull) {
+        if (args == null) {
             if (replaceNull != null) {
                 args = new HashMap(0);
             } else {
@@ -245,7 +246,6 @@ public class StringUtil extends StringUtils {
                         end = text.indexOf(closeToken, offset);
                     } else {
                         expression.append(src, offset, end - offset);
-                        offset = end + closeToken.length();
                         break;
                     }
                 }
@@ -258,20 +258,20 @@ public class StringUtil extends StringUtils {
                     String[] keyObj = key.split(equalToken);
                     Object o;
                     String value;
-                    //判断是否有配置了默认值(:-)  by nhApis 2018.12.27
+                    //判断是否有配置了默认值(:)
                     if (keyObj.length > 0) {
-                        //配置了默认值,使用key获取当前环境变量中是否已经配置  by nhApis 2018.12.27
-                        o = args.get(keyObj[0]);
+                        //配置了默认值,使用key获取当前环境变量中是否已经配置
+                        o = JSONUtil.pathGet(keyObj[0].trim(), args);
                     } else {
-                        o = args.get(key);
+                        o = JSONUtil.pathGet(key.trim(), args);
                     }
 
-                    if (o == null) {
+                    if (o == null || ObjectUtils.isEmpty(o)) {
                         if (key.contains(equalToken)) {
-                            //获取不到使用默认值   by nhApis 2018.12.24
+                            //获取不到使用默认值
                             value = keyObj[1].trim();
                         } else if (replaceNull != null) {
-                            //获取不到环境变量时,返回原表达式 by nhApis 2018.12.24
+                            //获取不到环境变量时,返回原表达式
                             value = replaceNull;
                         } else {
                             value = openToken + key + closeToken;
@@ -293,12 +293,13 @@ public class StringUtil extends StringUtils {
 
     /**
      * 删除扩展名
+     *
      * @param str 字符串
      * @return 删除扩展名以后的字符串
      */
     public static String removeExtension(String str) {
         if (!isEmpty(str)) {
-            return str.substring(0,str.lastIndexOf(Constant.RegularAbout.SPOT));
+            return str.substring(0, str.lastIndexOf(Constant.RegularAbout.SPOT));
         }
         return str;
     }

@@ -210,8 +210,41 @@ public class PatternUtil {
         return null;
     }
 
-
-    public static void main(String[] args) {
-        PatternUtil.getGroupString("([\\d]{2})tudou","11tudou22tudouwqtudou");
+    /**
+     * 查找正则表达式在目标字符串中最后一次出现的开始位置
+     *
+     * @param regex 正则
+     * @param text  目标字符串
+     * @return 位置。-1为不存在
+     */
+    public static int lastIndexOf(String regex, String text) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex));
+        int endIndex = -1;
+        while (matcher.find()) {
+            endIndex = matcher.start();
+        }
+        return endIndex;
     }
+
+    /**
+     * 查找正则表达式在目标字符串中第一次出现的开始位置
+     *
+     * @param regex 正则
+     * @param text  目标字符串
+     * @return 位置。-1为不存在
+     */
+    public static int indexOf(String regex, String text) {
+        Matcher matcher = getMatcher(text, Pattern.compile(regex));
+        int endIndex = -1;
+        if (matcher.find()) {
+            endIndex = matcher.start();
+        }
+        return endIndex;
+    }
+
+
+//    public static void main(String[] args) {
+//        PatternUtil.getGroupString("([\\d]{2})tudou","11tudou22tudouwqtudou");
+//        System.out.println(PatternUtil.lastIndexOf("[\\/.]","he.sad/sds"));
+//    }
 }

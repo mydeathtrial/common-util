@@ -298,7 +298,7 @@ public class StringUtil extends StringUtils {
      * @return 删除扩展名以后的字符串
      */
     public static String removeExtension(String str) {
-        if (!isEmpty(str)) {
+        if (!isEmpty(str) && str.contains(Constant.RegularAbout.SPOT)) {
             return str.substring(0, str.lastIndexOf(Constant.RegularAbout.SPOT));
         }
         return str;

@@ -175,23 +175,23 @@ public class ObjectUtil extends ObjectUtils {
      * @param <T>     泛型
      * @return 转换后的对象
      */
-    private static <T, A> T toArray(Object from, TypeReference<T> toClass) {
-        A[] array = null;
+    private static <T> T toArray(Object from, TypeReference<T> toClass) {
+        Object array = null;
 
-        Class innerClass = toClass.getWrapperClass().getComponentType();
+        Class<?> innerClass = toClass.getWrapperClass().getComponentType();
         if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
-            array = (A[]) Array.newInstance(innerClass, ((Collection) from).size());
+            array = Array.newInstance(innerClass, ((Collection<?>) from).size());
             int i = 0;
-            for (Object node : (Collection) from) {
-                array[i++] = (A) to(node, new TypeReference<Object>(innerClass) {
-                });
+            for (Object node : (Collection<?>) from) {
+                Array.set(array, i++, to(node, new TypeReference<Object>(innerClass) {
+                }));
             }
         } else if (from.getClass().isArray()) {
-            array = (A[]) Array.newInstance(innerClass, ((Object[]) from).length);
+            array = Array.newInstance(innerClass, Array.getLength(from));
             int i = 0;
             for (Object node : (Object[]) from) {
-                array[i++] = (A) to(node, new TypeReference<Object>(innerClass) {
-                });
+                Array.set(array, i++, to(node, new TypeReference<Object>(innerClass) {
+                }));
             }
         } else if (from instanceof String) {
             String[] strings = ((String) from).split(",");
@@ -1176,6 +1176,7 @@ public class ObjectUtil extends ObjectUtils {
 
     /**
      * 只比较source中不为空的字段
+     *
      * @param source 原对象
      * @param target 目标对象
      * @return 是否
@@ -1203,6 +1204,8 @@ public class ObjectUtil extends ObjectUtils {
     }
 
     public static void main(String[] args) {
-        System.out.println(to(123,new TypeReference<String>(){}));;
+        System.out.println(to(123, new TypeReference<String>() {
+        }));
+        ;
     }
 }

@@ -69,10 +69,20 @@ public class TypeReference<T> {
 
     /**
      * 添加类的ParameterizedType
+     *
      * @param type
      */
     public void addParameterizedType(Type type) {
         typeArguments = ArrayUtil.add(typeArguments, type);
+    }
+
+    /**
+     * 替换子类
+     * @param index 索引
+     * @param type 子类型
+     */
+    public void replaceParameterizedType(int index, Type type) {
+        typeArguments = ArrayUtil.insert(index, ArrayUtil.remove(typeArguments, index), type);
     }
 
     /**

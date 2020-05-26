@@ -187,10 +187,11 @@ public class ObjectUtil extends ObjectUtils {
                 }));
             }
         } else if (from.getClass().isArray()) {
-            array = Array.newInstance(innerClass, Array.getLength(from));
-            int i = 0;
-            for (Object node : (Object[]) from) {
-                Array.set(array, i++, to(node, new TypeReference<Object>(innerClass) {
+            int length = Array.getLength(from);
+            array = Array.newInstance(innerClass, length);
+
+            for (int i = 0; i < length; i++) {
+                Array.set(array, i, to(Array.get(from, i), new TypeReference<Object>(innerClass) {
                 }));
             }
         } else if (from instanceof String) {

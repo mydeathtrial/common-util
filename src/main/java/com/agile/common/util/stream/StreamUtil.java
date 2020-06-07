@@ -26,12 +26,15 @@ public class StreamUtil {
      * 输入流转字符串
      * @param inputStream 输入流
      * @return 字符串
-     * @throws UnsupportedEncodingException 不支持的编码
      */
-    public static String toString(InputStream inputStream) throws UnsupportedEncodingException {
-        ByteArrayOutputStream result = new ByteArrayOutputStream();
-        toOutputStream(inputStream,result);
-        return result.toString(System.getProperty("sun.jnu.encoding"));
+    public static String toString(InputStream inputStream) {
+        try (ByteArrayOutputStream result = new ByteArrayOutputStream()){
+            toOutputStream(inputStream,result);
+            return result.toString(System.getProperty("sun.jnu.encoding"));
+        } catch (IOException e) {
+            log.error("InputStream convert to String error", e);
+        }
+        return null;
     }
 
     /**
@@ -40,17 +43,17 @@ public class StreamUtil {
      * @param outputStream 输出流
      */
     public static void toOutputStream(InputStream inputStream, OutputStream outputStream) {
-        try {
+        try (InputStream inputStreams = inputStream;
+             OutputStream outputStreams = outputStream;
+        ){
             final int length = 1024;
             byte[] buffer = new byte[length];
             int r;
-            while ((r = inputStream.read(buffer)) != -1) {
+            while ((r = inputStreams.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, r);
             }
-            inputStream.close();
-            outputStream.flush();
-            outputStream.close();
-        }catch (IOException e){
+            outputStreams.flush();
+        } catch (IOException e) {
             log.error("InputStream convert to OutputStream error", e);
         }
     }

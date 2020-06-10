@@ -819,7 +819,7 @@ public class ObjectUtil extends ObjectUtils {
             return null;
         }
         try {
-            String getMethodName = "get" + StringUtil.toLowerName(field.getName());
+            String getMethodName = "get" + StringUtil.toUpperName(field.getName());
             Method getMethod = o.getClass().getMethod(getMethodName);
             getMethod.setAccessible(true);
             return getMethod.invoke(o);

@@ -12,6 +12,7 @@ import com.agile.common.util.number.NumberUtil;
 import com.agile.common.util.pattern.PatternUtil;
 import com.agile.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -256,8 +257,13 @@ public class ObjectUtil extends ObjectUtils {
                 }
                 return (T) collection;
             } else if (from instanceof String) {
-                String[] strings = ((String) from).split(",");
-                return toCollection(strings, toClass);
+                try {
+                    JSONArray array = JSON.parseArray((String) from);
+                    return to(array, toClass);
+                } catch (Exception e) {
+                    String[] strings = ((String) from).split(",");
+                    return toCollection(strings, toClass);
+                }
             }
         }
 

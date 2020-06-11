@@ -2,11 +2,9 @@ package com.agile.common.util.object;
 
 import com.agile.common.annotation.Alias;
 import com.agile.common.constant.Constant;
-import com.agile.common.util.array.ArrayUtil;
 import com.agile.common.util.clazz.ClassUtil;
 import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.date.DateUtil;
-import com.agile.common.util.json.JSONUtil;
 import com.agile.common.util.map.MapUtil;
 import com.agile.common.util.number.NumberUtil;
 import com.agile.common.util.pattern.PatternUtil;
@@ -16,7 +14,10 @@ import com.alibaba.fastjson.JSONArray;
 import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
@@ -53,6 +54,8 @@ import java.util.stream.Stream;
  */
 public class ObjectUtil extends ObjectUtils {
 
+
+    private static final String SERIAL_VERSION_UID = "serialVersionUID";
 
     public static <T> T to(Object from, TypeReference<T> toClass) {
         T result;
@@ -119,13 +122,13 @@ public class ObjectUtil extends ObjectUtils {
     public static String toString(Object from) {
         String result;
         if (from.getClass().isArray()) {
-            result = ArrayUtil.toString(from);
+            result = ArrayUtils.toString(from);
         } else if (Collection.class.isAssignableFrom(from.getClass())) {
-            result = ArrayUtil.toString(((Collection) from).toArray());
+            result = ArrayUtils.toString(((Collection<?>) from).toArray());
         } else if (Map.class.isAssignableFrom(from.getClass())) {
             result = from.toString();
         } else if (from.getClass().isEnum()) {
-            result = ((Enum) from).name();
+            result = ((Enum<?>) from).name();
         } else {
             result = from.toString();
         }
@@ -144,10 +147,10 @@ public class ObjectUtil extends ObjectUtils {
     private static <T> T toEnum(Object from, TypeReference<T> toClass) {
         if (toClass.isEnum()) {
             try {
-                Class enumClass = toClass.getWrapperClass();
+                Class<?> enumClass = toClass.getWrapperClass();
                 Method values = enumClass.getMethod("values");
                 values.setAccessible(true);
-                Enum[] v = (Enum[]) values.invoke(null);
+                Enum<?>[] v = (Enum<?>[]) values.invoke(null);
 
                 List<String> nameList = Stream.of(v).map(Enum::name).collect(Collectors.toList());
                 String targetName = StringUtil.vagueMatches(from.toString(), nameList);
@@ -157,8 +160,12 @@ public class ObjectUtil extends ObjectUtils {
                     valueOf.setAccessible(true);
                     return (T) valueOf.invoke(null, targetName);
                 } else {
-                    HashMap<String, Enum> map = Maps.newHashMapWithExpectedSize(v.length);
-                    nameList = Stream.of(v).peek(node -> map.put(node.toString(), node)).map(Enum::toString).collect(Collectors.toList());
+                    HashMap<String, Enum<?>> map = Maps.newHashMapWithExpectedSize(v.length);
+                    nameList = Stream.of(v)
+                            .map(node -> map.put(node.toString(), node))
+                            .filter(Objects::nonNull)
+                            .map(Enum::toString)
+                            .collect(Collectors.toList());
                     targetName = StringUtil.vagueMatches(from.toString(), nameList);
                     return (T) map.get(targetName);
                 }
@@ -196,8 +203,13 @@ public class ObjectUtil extends ObjectUtils {
                 }));
             }
         } else if (from instanceof String) {
-            String[] strings = ((String) from).split(",");
-            return toArray(strings, toClass);
+            try {
+                JSONArray jsonArray = JSON.parseArray((String) from);
+                return to(jsonArray, toClass);
+            } catch (Exception e) {
+                String[] strings = ((String) from).split(",");
+                return toArray(strings, toClass);
+            }
         }
 
         return (T) array;
@@ -208,7 +220,7 @@ public class ObjectUtil extends ObjectUtils {
             if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class) || from.getClass().isArray()) {
                 return null;
             }
-            Map map = MapUtil.parse(from);
+            Map<?, ?> map = MapUtil.parse(from);
             return (T) MapUtil.toMap((Map<Object, Object>) map, (TypeReference<Map<Object, Object>>) toClass);
         }
         return null;
@@ -246,7 +258,7 @@ public class ObjectUtil extends ObjectUtils {
 
                 if (collection != null) {
                     if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
-                        for (Object o : (Collection) from) {
+                        for (Object o : (Collection<?>) from) {
                             collection.add(to(o, new TypeReference<>(nodeType)));
                         }
                     } else if (from.getClass().isArray()) {
@@ -293,7 +305,7 @@ public class ObjectUtil extends ObjectUtils {
             T object = ClassUtil.newInstance(toClass);
             if (object != null) {
                 Set<Field> fields = ClassUtil.getAllField(toClass);
-                fields.stream().forEach(field -> {
+                fields.forEach(field -> {
                     String key = StringUtil.vagueMatches(field.getName(), map.keySet());
                     if (key != null) {
                         try {
@@ -309,7 +321,7 @@ public class ObjectUtil extends ObjectUtils {
                 }
             }
         } else if (from instanceof String) {
-            Object json = JSONUtil.parse((String) from);
+            Object json = JSON.parse((String) from);
             if (json instanceof JSON) {
                 return toPOJO(json, toClass);
             }
@@ -340,7 +352,7 @@ public class ObjectUtil extends ObjectUtils {
 
         String valueStr = from.toString();
         if (NumberUtil.isNumber(toClass)) {
-            Number number = NumberUtil.createNumber(valueStr);
+            Number number = NumberUtils.createNumber(valueStr);
             if (toClass == Short.class || toClass == short.class) {
                 temp = number.shortValue();
             } else if (toClass == Integer.class || toClass == int.class) {
@@ -353,8 +365,8 @@ public class ObjectUtil extends ObjectUtils {
                 temp = number.doubleValue();
             }
         } else if (toClass == Boolean.class || toClass == boolean.class) {
-            if (NumberUtil.isParsable(valueStr)) {
-                temp = NumberUtil.createNumber(valueStr).intValue() > 0;
+            if (NumberUtils.isParsable(valueStr)) {
+                temp = NumberUtils.createNumber(valueStr).intValue() > 0;
             } else {
                 temp = Boolean.parseBoolean(valueStr);
             }
@@ -377,13 +389,12 @@ public class ObjectUtil extends ObjectUtils {
             return true;
         }
         Class<?> clazz = object.getClass();
-        final String serialVersionUid = "serialVersionUID";
         try {
             Object newObject = clazz.newInstance();
             Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
                 field.setAccessible(true);
                 try {
-                    if (serialVersionUid.equals(field.getName())) {
+                    if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
                     }
                     Object currentValue = field.get(object);
@@ -395,7 +406,7 @@ public class ObjectUtil extends ObjectUtils {
 
             }).collect(Collectors.toSet());
 
-            return haveValueFields.size() == 0;
+            return haveValueFields.isEmpty();
         } catch (InstantiationException | IllegalAccessException e) {
             return false;
         }
@@ -409,10 +420,10 @@ public class ObjectUtil extends ObjectUtils {
      * @param value  值
      */
     public static void setValue(Object object, Field field, Object value) {
-        Optional.ofNullable(object).orElseThrow(IllegalArgumentException::new);
+        object = Optional.ofNullable(object).orElseThrow(IllegalArgumentException::new);
 
         field.setAccessible(true);
-        Class objectClass = object.getClass();
+        Class<?> objectClass = object.getClass();
         String fieldName = field.getName();
         Optional<Object> optional = Optional.ofNullable(value);
         if (optional.isPresent()) {
@@ -608,11 +619,11 @@ public class ObjectUtil extends ObjectUtils {
      */
     private static Set<String> getSameField(Object source, Object target, Compare compare) {
         Set<String> result = new HashSet<>();
-        if (ObjectUtil.isEmpty(source) || ObjectUtil.isEmpty(target)) {
+        if (ObjectUtils.isEmpty(source) || ObjectUtils.isEmpty(target)) {
             return result;
         }
         Set<String> sameField = getSameField(source, target);
-        if (sameField.size() == 0) {
+        if (sameField.isEmpty()) {
             return result;
         }
 
@@ -670,11 +681,10 @@ public class ObjectUtil extends ObjectUtils {
                     }
                     break;
                 case DIFF:
-                    if (sourceValue == null && targetValue != null) {
-                        result.add(fieldName);
-                    } else if (sourceValue != null && targetValue == null) {
-                        result.add(fieldName);
-                    } else if (sourceValue != null && !source.equals(targetValue)) {
+                    boolean is = (sourceValue == null && targetValue != null) ||
+                            (sourceValue != null && targetValue == null) ||
+                            (sourceValue != null && !source.equals(targetValue));
+                    if (is) {
                         result.add(fieldName);
                     }
                     break;
@@ -745,7 +755,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param containOrExclude 包含或排除
      */
     public static void copyProperties(Object source, Object target, String prefix, String suffix, String[] arguments, ContainOrExclude containOrExclude) {
-        if (ObjectUtil.isEmpty(source) || ObjectUtil.isEmpty(target)) {
+        if (ObjectUtils.isEmpty(source) || ObjectUtils.isEmpty(target)) {
             return;
         }
 
@@ -754,8 +764,8 @@ public class ObjectUtil extends ObjectUtils {
             field.setAccessible(true);
             String propertyName = field.getName();
 
-            propertyName = StringUtil.isBlank(prefix) ? propertyName : prefix + StringUtil.toUpperName(propertyName);
-            propertyName = StringUtil.isBlank(suffix) ? propertyName : propertyName + StringUtil.toUpperName(suffix);
+            propertyName = StringUtils.isBlank(prefix) ? propertyName : prefix + StringUtil.toUpperName(propertyName);
+            propertyName = StringUtils.isBlank(suffix) ? propertyName : propertyName + StringUtil.toUpperName(suffix);
 
             Field sourceProperty = ClassUtil.getField(source.getClass(), propertyName);
             if (sourceProperty == null) {
@@ -767,12 +777,12 @@ public class ObjectUtil extends ObjectUtils {
 
             switch (containOrExclude) {
                 case EXCLUDE:
-                    if (ArrayUtil.contains(arguments, sourceProperty.getName())) {
+                    if (ArrayUtils.contains(arguments, sourceProperty.getName())) {
                         continue;
                     }
                     break;
                 case INCLUDE:
-                    if (!ArrayUtil.contains(arguments, sourceProperty.getName())) {
+                    if (!ArrayUtils.contains(arguments, sourceProperty.getName())) {
                         continue;
                     }
                     break;
@@ -873,7 +883,7 @@ public class ObjectUtil extends ObjectUtils {
         if (Map.class.isAssignableFrom(clazz)) {
             return (T) map;
         }
-        if (!ObjectUtil.isEmpty(map)) {
+        if (!ObjectUtils.isEmpty(map)) {
             try {
                 T object = clazz.newInstance();
 
@@ -999,13 +1009,12 @@ public class ObjectUtil extends ObjectUtils {
      */
     public static boolean isAllNullValidity(Object object) {
         Class<?> clazz = object.getClass();
-        final String serialVersionUID = "serialVersionUID";
         try {
             Object newObject = clazz.newInstance();
             Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
                 field.setAccessible(true);
                 try {
-                    if (serialVersionUID.equals(field.getName())) {
+                    if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
                     }
                     Object currentValue = field.get(object);
@@ -1017,9 +1026,8 @@ public class ObjectUtil extends ObjectUtils {
 
             }).collect(Collectors.toSet());
 
-            return haveValueFields.size() == 0;
+            return haveValueFields.isEmpty();
         } catch (InstantiationException | IllegalAccessException e) {
-            e.printStackTrace();
             return false;
         }
     }
@@ -1038,7 +1046,7 @@ public class ObjectUtil extends ObjectUtils {
         int i = 0;
         for (Field field : fields) {
             try {
-                if (ArrayUtil.contains(exclude, field.getName())) {
+                if (ArrayUtils.contains(exclude, field.getName())) {
                     i++;
                     continue;
                 }
@@ -1119,17 +1127,20 @@ public class ObjectUtil extends ObjectUtils {
      * @throws IllegalAccessException 调用过程异常
      */
     public static List<Different> getDifferenceProperties(Object source, Object target, String... excludeProperty) throws IllegalAccessException {
-        if ((!ClassUtil.compareClass(source, target) || compare(source, target) || isEmpty(source)) != isEmpty(target)) {
-            return null;
-        }
+
         List<Different> result = new ArrayList<>();
+
+        if ((!ClassUtil.compareClass(source, target) || compare(source, target) || isEmpty(source)) != isEmpty(target)) {
+            return result;
+        }
+
         Object sourceObject = isEmpty(source) ? target : source;
         Object targetObject = isEmpty(source) ? source : target;
-        Class sourceClass = sourceObject.getClass();
+        Class<?> sourceClass = sourceObject.getClass();
         Set<Field> fields = ClassUtil.getAllField(sourceClass);
         for (Field field : fields) {
             field.setAccessible(true);
-            if (excludeProperty != null && ArrayUtil.contains(excludeProperty, field.getName())) {
+            if (excludeProperty != null && ArrayUtils.contains(excludeProperty, field.getName())) {
                 continue;
             }
             Object sourceValue = field.get(sourceObject);
@@ -1159,11 +1170,10 @@ public class ObjectUtil extends ObjectUtils {
             }
             try {
                 List<Different> list = getDifferenceProperties(source, target, excludeProperty);
-                if (list != null && list.size() > 0) {
+                if (!ObjectUtils.isEmpty(list)) {
                     return false;
                 }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
+            } catch (IllegalAccessException ignored) {
             }
         }
         return true;
@@ -1192,7 +1202,7 @@ public class ObjectUtil extends ObjectUtils {
         Field[] fields = source.getClass().getDeclaredFields();
         for (Field field : fields) {
             field.setAccessible(true);
-            if ("serialVersionUID".equals(field.getName())) {
+            if (SERIAL_VERSION_UID.equals(field.getName())) {
                 continue;
             }
             try {

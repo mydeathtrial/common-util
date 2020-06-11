@@ -4,6 +4,8 @@ import com.agile.common.constant.Constant;
 import com.agile.common.util.clazz.ClassUtil;
 import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.object.ObjectUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
 
 import java.lang.reflect.Field;
@@ -163,6 +165,11 @@ public class MapUtil {
     public static Map parse(Object object) {
         if (ClassUtil.isExtendsFrom(object.getClass(), Map.class)) {
             return (Map) object;
+        }
+        if(object instanceof String){
+            try {
+                return JSON.parseObject((String) object);
+            }catch (Exception ignored){}
         }
         Set<Field> fields = ClassUtil.getAllField(object.getClass());
         Map<String, Object> map = Maps.newHashMapWithExpectedSize(fields.size());

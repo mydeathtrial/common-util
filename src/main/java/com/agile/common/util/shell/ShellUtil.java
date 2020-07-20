@@ -6,8 +6,8 @@ import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -15,8 +15,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 /**
  * @author 佟盟
@@ -31,7 +29,7 @@ public class ShellUtil {
 
     private static final Log log = LogFactory.getLog(ShellUtil.class);
     private static final String ERROR_LOG = "执行命令时发生异常";
-    private static final ExecutorService POOL = new ThreadPoolExecutor(0, 10, 10, TimeUnit.SECONDS, new LinkedBlockingDeque<>(), new ThreadPoolExecutor.CallerRunsPolicy());
+    private static final ExecutorService POOL = new ThreadPoolExecutor(3, 3, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>(), new ThreadPoolExecutor.CallerRunsPolicy());
 
     /**
      * @value 换行
@@ -185,16 +183,6 @@ public class ShellUtil {
         }
     }
 
-    private static Future<?> read(Process process, AtomicReference<String> log, Function<Process, InputStream> function) {
-        return POOL.submit(() -> {
-            try {
-                log.set(StreamUtil.toString(function.apply(process)));
-            } catch (Exception e) {
-                log.set(null);
-            }
-        });
-    }
-
     /**
      * 获取Process中的正常或者异常流
      *
@@ -203,35 +191,33 @@ public class ShellUtil {
      * @throws InterruptedException 终端
      */
     private static Result getResult(Process process, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException {
-        AtomicReference<String> successLog = new AtomicReference<>();
-        AtomicReference<String> errorLog = new AtomicReference<>();
 
-        Thread successF = new Thread(() -> successLog.set(StreamUtil.toString(process.getInputStream())));
-        successF.start();
-        Thread errorF = new Thread(() -> errorLog.set(StreamUtil.toString(process.getErrorStream())));
-        errorF.start();
-        Future<Boolean> waitFuture = POOL.submit(() -> {
-            process.waitFor();
+        CompletableFuture<String> successLog = CompletableFuture.supplyAsync(() -> StreamUtil.toString(process.getInputStream()), POOL);
+
+        CompletableFuture<String> errorLog = CompletableFuture.supplyAsync(() -> StreamUtil.toString(process.getInputStream()), POOL);
+
+        CompletableFuture<Boolean> main = CompletableFuture.supplyAsync(() -> {
+            try {
+                process.waitFor();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                Thread.currentThread().interrupt();
+            }
             return process.exitValue() == 0;
         });
 
-        Result result;
-        boolean waitResult = false;
-
+        boolean isSuccess = false;
         try {
-            waitResult = waitFuture.get(timeout, unit);
+            isSuccess = main.get(timeout, unit);
         } catch (TimeoutException e) {
-            waitFuture.cancel(true);
-            successF.interrupt();
-            errorF.interrupt();
-        } finally {
-            if (waitResult) {
-                result = new Result(true, successLog.get());
-            } else {
-                result = new Result(false, errorLog.get());
-            }
+            e.printStackTrace();
         }
-        return result;
+
+        if (isSuccess) {
+            return new Result(true, successLog.get());
+        } else {
+            return new Result(true, errorLog.get());
+        }
     }
 
     /**

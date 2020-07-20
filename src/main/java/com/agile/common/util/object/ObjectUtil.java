@@ -350,6 +350,14 @@ public class ObjectUtil extends ObjectUtils {
 
         Object temp = null;
 
+        if (from.getClass().isArray() && Array.getLength(from) > 0) {
+            from = Array.get(from, 0);
+        }
+
+        if (Collection.class.isAssignableFrom(from.getClass()) && !((Collection<?>) from).isEmpty()) {
+            from = ((Collection<?>) from).iterator().next();
+        }
+
         String valueStr = from.toString();
         if (NumberUtil.isNumber(toClass)) {
             Number number = NumberUtils.createNumber(valueStr);

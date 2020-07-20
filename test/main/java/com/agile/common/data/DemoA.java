@@ -49,14 +49,14 @@ public class DemoA {
     private Map<String, Integer> stringIntegerMap;
     private LinkedHashMap<Integer, Integer> integerIntegerLinkedHashMap;
 
-    private List<DemoA> demoAList;
-    private Map<String, DemoA> stringDemoAMap;
+//    private List<DemoA> demoAList;
+//    private Map<String, DemoA> stringDemoAMap;
 
     private Integer[] integersArray;
 
-    private DemoEnum demoEnum;
-
-    private DemoEnum[] demoEnumArray;
+//    private DemoEnum demoEnum;
+//
+//    private DemoEnum[] demoEnumArray;
 
     public static Map<String, Object> testData() {
         Map<String, Object> map = Maps.newHashMap();

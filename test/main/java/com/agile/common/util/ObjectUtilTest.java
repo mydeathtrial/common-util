@@ -5,8 +5,10 @@ import com.agile.common.data.DemoC;
 import com.agile.common.util.clazz.TypeReference;
 import com.agile.common.util.date.DateUtil;
 import com.agile.common.util.object.ObjectUtil;
+import com.alibaba.fastjson.JSON;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -25,8 +27,17 @@ public class ObjectUtilTest {
      */
     @Test
     public void mapToObject() {
-        ObjectUtil.to(DemoA.testData(), new TypeReference<DemoA>() {
-        });
+        long start = System.currentTimeMillis();
+        for(int i=0;i<10000;i++){
+            ObjectUtil.to(DemoA.testData(), new TypeReference<DemoA>() {
+            });
+        }
+        System.out.println(Duration.ofMillis(System.currentTimeMillis()-start).getSeconds());
+//        long start2 = System.currentTimeMillis();
+//        for(int i=0;i<10000;i++){
+//            JSON.toJavaObject(JSON.parseObject(JSON.toJSONString(DemoA.testData())),DemoA.class);
+//        }
+//        System.out.println(System.currentTimeMillis()-start2);
     }
 
     /**

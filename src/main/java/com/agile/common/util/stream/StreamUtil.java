@@ -7,7 +7,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 
 /**
  * @author 佟盟
@@ -43,16 +42,14 @@ public class StreamUtil {
      * @param outputStream 输出流
      */
     public static void toOutputStream(InputStream inputStream, OutputStream outputStream) {
-        try (InputStream inputStreams = inputStream;
-             OutputStream outputStreams = outputStream;
-        ){
+        try {
             final int length = 1024;
             byte[] buffer = new byte[length];
             int r;
-            while ((r = inputStreams.read(buffer)) != -1) {
+            while ((r = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, r);
             }
-            outputStreams.flush();
+            outputStream.flush();
         } catch (IOException e) {
             log.error("InputStream convert to OutputStream error", e);
         }

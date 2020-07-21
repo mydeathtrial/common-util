@@ -286,7 +286,7 @@ public class ObjectUtil extends ObjectUtils {
      * 转换成POJO
      *
      * @param from    被转换对象
-     * @param toClass 转换的目标POJO类型
+     * @param toClass 转换的目标POJO类型un
      * @param <T>     泛型
      * @return 转换后的POJO
      */
@@ -1083,9 +1083,9 @@ public class ObjectUtil extends ObjectUtils {
      * @return Map
      */
     public static Map<String, Object> getUnderlineMapFromObject(Object o) {
-        Field[] fields = o.getClass().getDeclaredFields();
-        Map<String, Object> result = new HashMap<>(fields.length);
-        if (fields.length > 0) {
+        Set<Field> fields = ClassUtil.getAllField(o.getClass());
+        Map<String, Object> result = new HashMap<>(fields.size());
+        if (!fields.isEmpty()) {
             for (Field field : fields) {
                 field.setAccessible(true);
                 String key = StringUtil.toUnderline(field.getName());

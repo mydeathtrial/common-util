@@ -4,7 +4,7 @@
 集合类型嵌套、模糊识别（如驼峰、下划线风格属性互转）、逗号分隔字符串转集合、日期字符串分析、注解别名、识别set、get、复杂属性拷贝等能力。
 
 ----
-[![](https://img.shields.io/badge/Spring-LATEST-green)](https://img.shields.io/badge/commons-lang-LATEST-green)
+[![](https://img.shields.io/badge/common--lang3-LATEST-yellow)](https://img.shields.io/badge/common--lang3-LATEST-yellow)
 [![](https://img.shields.io/badge/build-maven-green)](https://img.shields.io/badge/build-maven-green)
 
 
@@ -15,19 +15,19 @@
 
 * **特色能力**
 力求创作具有特色化能力，避免重复造轮子，对开发中常用的commons-lang3等工具集中已涵盖的能力不做重复设计。特色能力如：
-ClassUtil（反射工具，获取各种形式的类信息，包括注解解析等能力）
-TreeUtil（树形工具，平行数据集转树形集合结构，支持累加字段，常用于字典数据转换）
-DateUtil（日期解析工具，在不提供dataFormat的情况下，自主识别日期）
-JarUtil（Jar文件解析工具，一般用于jar内配置文件读取）
-HttpUtil（Http、Https协议通信工具）
-JSONUtil（路径取参）
-MapUtil（Map结构转换）
-ObjectUtil（对象深度转换器、拷贝、对象解析等）
-PatternUtil（正则工具，匹配、提取）
-PropertiesUtil（配置文件加载器，解析properties、yml及各种配置文件位置，其作为Agile框架启动过程中的自动配置文件扫描，并判断配置文件优先级）
-ShellUtil（命令行工具）
-StringUtil（字符串工具，转换、匹配、提取、占位符解析）
-...
+<br> ClassUtil（反射工具，获取各种形式的类信息，包括注解解析等能力）
+<br> TreeUtil（树形工具，平行数据集转树形集合结构，支持累加字段，常用于字典数据转换）
+<br> DateUtil（日期解析工具，在不提供dataFormat的情况下，自主识别日期）
+<br> JarUtil（Jar文件解析工具，一般用于jar内配置文件读取）
+<br> HttpUtil（Http、Https协议通信工具）
+<br> JSONUtil（路径取参）
+<br> MapUtil（Map结构转换）
+<br> ObjectUtil（对象深度转换器、拷贝、对象解析等）
+<br> PatternUtil（正则工具，匹配、提取）
+<br> PropertiesUtil（配置文件加载器，解析properties、yml及各种配置文件位置，其作为Agile框架启动过程中的自动配置文件扫描，并判断配置文件优先级）
+<br> ShellUtil（命令行工具）
+<br> StringUtil（字符串工具，转换、匹配、提取、占位符解析）
+<br> 工具较多，详细请查看javadoc ...
 
 -------
 ## 快速入门

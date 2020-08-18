@@ -1,9 +1,13 @@
 package cloud.agileframework.common.util.date;
 
-import cloud.agileframework.common.util.object.ObjectUtil;
 import cloud.agileframework.common.util.pattern.PatternUtil;
+import org.apache.commons.lang3.ObjectUtils;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
@@ -78,10 +82,10 @@ public class DateUtil {
                     return time;
                 } else {
                     List<String> list = PatternUtil.getMatched(ZERO_FILL_DATE_REGEX, source);
-                    if (ObjectUtil.isEmpty(list)) {
+                    if (ObjectUtils.isEmpty(list)) {
                         list = PatternUtil.getMatched(DATE_REGEX, source);
                     }
-                    if (ObjectUtil.isEmpty(list)) {
+                    if (ObjectUtils.isEmpty(list)) {
                         list = PatternUtil.getMatched(DATE_SIMPLE_REGEX, source);
                     }
                     for (String node : list) {
@@ -212,10 +216,91 @@ public class DateUtil {
         return null;
     }
 
-//    public static void main(String[] args) {
-//        GregorianCalendar gregorianCalendar = parse("2020-04-23 09:38:00");
-//        String s = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(gregorianCalendar.getTime());
-//        System.out.println(s);
-//
-//    }
+    private static final int DATE_UNIT = 60;
+    private static final int MIN_UNIT = 1000;
+    private static final int HOUR_UNIT = 24;
+
+    /**
+     * 获取时间戳字符串
+     */
+    public static Date getCurrentDate() {
+        return new Date(System.currentTimeMillis());
+    }
+
+    /**
+     * 字符串转日期
+     *
+     * @param date   日期字符串
+     * @param format 格式
+     */
+    public static Date toDateByFormat(String date, String format) throws ParseException {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+        return dateFormat.parse(date);
+    }
+
+    public static String toFormatByDate(Date date, String format) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat(format);
+        return dateFormat.format(date);
+    }
+
+    /**
+     * 比较两个Date类型时间是否相同
+     *
+     * @param date1 时间1
+     * @param date2 时间2
+     * @return true:相同
+     */
+    public static boolean isSame(Date date1, Date date2) {
+        return date1.getTime() == date2.getTime();
+    }
+
+    /**
+     * 计算两个日期之间相差的天数
+     *
+     * @param date1 时间1
+     * @param date2 时间2
+     * @return 相差天数
+     */
+    public static long getInterval(Date date1, Date date2, int unit) {
+        long interval;
+        switch (unit) {
+            case Calendar.YEAR:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / (MIN_UNIT * DATE_UNIT * DATE_UNIT * HOUR_UNIT * 365);
+                break;
+            case Calendar.MONTH:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / (MIN_UNIT * DATE_UNIT * DATE_UNIT * HOUR_UNIT * 30);
+                break;
+            case Calendar.DATE:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / (MIN_UNIT * DATE_UNIT * DATE_UNIT * HOUR_UNIT);
+                break;
+            case Calendar.HOUR_OF_DAY:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / (MIN_UNIT * DATE_UNIT * DATE_UNIT);
+                break;
+            case Calendar.MINUTE:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / (MIN_UNIT * DATE_UNIT);
+                break;
+            case Calendar.SECOND:
+                interval = Math.abs(date1.getTime() - date2.getTime()) / MIN_UNIT;
+                break;
+            case Calendar.MILLISECOND:
+                interval = Math.abs(date1.getTime() - date2.getTime());
+                break;
+            default:
+                throw new RuntimeException("Undefined variable " + unit);
+        }
+        return interval;
+    }
+
+    /**
+     * 获取指定日期后时间（指定加算年月日信息）
+     *
+     * @param date     指定日期
+     * @param duration 时间间隔
+     * @return 加算后日期
+     */
+    public static Date add(Date date, Duration duration) {
+        Calendar cal = GregorianCalendar.getInstance();
+        cal.setTimeInMillis(date.getTime() + duration.toMillis());
+        return cal.getTime();
+    }
 }

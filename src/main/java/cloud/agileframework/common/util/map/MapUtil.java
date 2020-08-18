@@ -9,8 +9,12 @@ import com.google.common.collect.Maps;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.util.Comparator;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
@@ -218,6 +222,63 @@ public class MapUtil {
         String urlParam = mapOfString.toString();
         return urlParam.startsWith(Constant.RegularAbout.AND) ? urlParam.substring(1) : urlParam;
     }
+
+    /**
+     * 辅助枚举
+     */
+    public enum KeyOrValue {
+        /**
+         * key
+         */
+        KEY,
+        VALUE
+    }
+
+    /**
+     * 按照key值排序Map
+     *
+     * @param map
+     * @return
+     */
+    public static Map<String, Object> sortByKey(Map<String, Object> map) {
+        return sort(map, KeyOrValue.KEY);
+    }
+
+    /**
+     * 按照value值排序Map
+     *
+     * @param map
+     * @return
+     */
+    public static Map<String, Object> sortByValue(Map<String, Object> map) {
+        return sort(map, KeyOrValue.VALUE);
+    }
+
+    /**
+     * Map排序
+     *
+     * @param map        目标map
+     * @param keyOrValue 排序key值还是排序value值
+     * @return 排序好的Map
+     */
+    private static Map<String, Object> sort(Map<String, Object> map, KeyOrValue keyOrValue) {
+        List<Map.Entry<String, Object>> list = new LinkedList<>(map.entrySet());
+        switch (keyOrValue) {
+            case KEY:
+                list.sort(Map.Entry.comparingByKey());
+                break;
+            case VALUE:
+                list.sort(Comparator.comparing(o -> String.valueOf(o.getValue())));
+                break;
+            default:
+        }
+        Map<String, Object> linkedHashMap = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : list) {
+            linkedHashMap.put(entry.getKey(), entry.getValue());
+        }
+        return linkedHashMap;
+    }
+
 
     public static void main(String[] args) {
         Map<String, Object> result = Maps.newHashMap();

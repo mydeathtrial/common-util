@@ -17,6 +17,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.apache.commons.io.FilenameUtils.EXTENSION_SEPARATOR;
+
 /**
  * @author 佟盟
  * 日期 2019/10/29 16:55
@@ -459,5 +461,23 @@ public class StringUtil extends StringUtils {
 //        set.add("_usernamE");getGroupByStartEnd
 //        vagueMatches("userName", set);
         System.out.println(removeExtension("s.s"));
+    }
+
+    public static String getFilenameExtension(String path) {
+        if (path == null) {
+            return null;
+        }
+
+        int extIndex = path.lastIndexOf(EXTENSION_SEPARATOR);
+        if (extIndex == -1) {
+            return null;
+        }
+
+        int folderIndex = path.lastIndexOf(Constant.RegularAbout.SLASH);
+        if (folderIndex > extIndex) {
+            return null;
+        }
+
+        return path.substring(extIndex + 1);
     }
 }

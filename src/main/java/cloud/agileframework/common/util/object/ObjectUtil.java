@@ -1000,16 +1000,14 @@ public class ObjectUtil extends ObjectUtils {
 
         try {
             Alias column = getAllEntityPropertyAnnotation(clazz, field, Alias.class);
-            if (column == null) {
-                return null;
-            }
-            for (String alias : column.value()) {
-                if (map.containsKey(alias)) {
-                    key = alias;
-                    break;
+            if (column != null) {
+                for (String alias : column.value()) {
+                    if (map.containsKey(alias)) {
+                        key = alias;
+                        break;
+                    }
                 }
             }
-
         } catch (Exception ignored) {
         }
 

@@ -3,10 +3,12 @@ package cloud.agileframework.common.util.properties;
 import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.file.JarUtil;
-import cloud.agileframework.common.util.files.SupportEnum;
 import cloud.agileframework.common.util.object.ObjectUtil;
+import cloud.agileframework.common.util.stream.StreamUtil;
 import cloud.agileframework.common.util.string.StringUtil;
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -17,6 +19,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -26,6 +29,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * @author 佟盟
@@ -237,9 +241,9 @@ public class PropertiesUtil {
 
         try {
 
-            if (fileName.endsWith(SupportEnum.properties.name())) {
+            if (fileName.endsWith("properties")) {
                 readProperties(inputStream);
-            } else if (fileName.endsWith(SupportEnum.yml.name()) || fileName.endsWith(SupportEnum.yaml.name())) {
+            } else if (fileName.endsWith("yml") || fileName.endsWith("yaml")) {
                 readYml(inputStream);
             }
             if (!fileName.endsWith(CLASS)) {
@@ -411,7 +415,7 @@ public class PropertiesUtil {
      */
     public static String getProperty(String key, String defaultValue) {
         Object value = getProperty(key);
-        if (!ObjectUtil.isEmpty(value)) {
+        if (!ObjectUtils.isEmpty(value)) {
             return value.toString();
         }
         return defaultValue;
@@ -451,4 +455,100 @@ public class PropertiesUtil {
         return ObjectUtil.to(getProperty(var1, defaultValue), new TypeReference<T>(var2));
     }
 
+    /**
+     * 根据文件名取classpath目录下的json数据
+     *
+     * @param fileName 不带后缀文件名
+     * @return JSONObject数据
+     */
+    public static JSON getJson(String fileName) {
+        try {
+            InputStream stream = null;
+
+            File file = new File(fileName);
+            if(file.exists()){
+                stream = new FileInputStream(file);
+            }else{
+                if (!fileName.endsWith(".json")) {
+                    fileName = fileName + ".json";
+                }
+                String path = getFileClassPath(fileName);
+                if(path != null){
+                    stream = PropertiesUtil.class.getResourceAsStream(path);
+                }
+            }
+
+            if(stream == null){
+                return null;
+            }
+
+            return (JSON)JSON.parse(StreamUtil.toString(stream));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 取配置文件内容
+     *
+     * @param fileName 文件名字
+     * @return 文件内容
+     */
+    public static String getFileContent(String fileName) {
+        InputStream inputStream = getFileStream(fileName);
+        return StreamUtil.toString(inputStream);
+    }
+
+    /**
+     * 取配置文件流
+     *
+     * @param fileName 文件名字
+     * @return 文件流
+     */
+    public static InputStream getFileStream(String fileName) {
+        String path = getFileClassPath(fileName);
+        if (path == null) {
+            return null;
+        }
+        return PropertiesUtil.class.getResourceAsStream(path);
+    }
+
+    /**
+     * 取配置文件编译路径
+     *
+     * @param fileName 文件名字
+     * @return 编译路径
+     */
+    public static String getFileClassPath(String fileName) {
+        final String regex = "[\\\\/]";
+        Set<String> set = getFilePaths("/" + fileName);
+        return set.stream().min(Comparator.comparingInt(a -> a.split(regex).length)).orElse(null);
+    }
+
+    /**
+     * 根据文件名取classpath目录下的json数据
+     *
+     * @param fileName 不带后缀文件名
+     * @return JSONObject数据
+     */
+    public static String getFilePath(String fileName) {
+        String path = getFileClassPath(fileName);
+        if (path == null) {
+            return null;
+        }
+        URL absolutePath = PropertiesUtil.class.getResource(path);
+        if (absolutePath == null) {
+            return path;
+        }
+        try {
+            return URLDecoder.decode(absolutePath.getPath(), StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        return path;
+    }
+
+    public static Set<String> getFilePaths(String fileName) {
+        return getFileNames().stream().filter(name -> name.endsWith(fileName)).collect(Collectors.toSet());
+    }
 }

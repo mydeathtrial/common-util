@@ -23,6 +23,18 @@ import java.util.Set;
  * @since 1.0
  */
 public class JSONUtil extends JSON {
+    /**
+     * java对象转json
+     *
+     * @param javaObject java对象
+     * @return json对象
+     */
+    public static JSON toJSON(Object javaObject) {
+        if (javaObject == null) {
+            return null;
+        }
+        return (JSON) parse(javaObject.toString());
+    }
 
     /**
      * json-lib转List Map结构

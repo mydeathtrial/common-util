@@ -1,7 +1,6 @@
 package cloud.agileframework.common.util.clazz;
 
 import cloud.agileframework.common.constant.Constant;
-import cloud.agileframework.common.util.object.ObjectUtil;
 import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Sets;
@@ -9,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.ClassUtils;
+import org.apache.commons.lang3.ObjectUtils;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
@@ -326,6 +326,6 @@ public class ClassUtil extends ClassUtils {
      * @return 是否相同
      */
     public static Boolean compareClass(Object source, Object target) {
-        return ObjectUtil.isEmpty(source) ? ObjectUtil.isEmpty(target) : (!ObjectUtil.isEmpty(target) && source.getClass() == (target.getClass()));
+        return ObjectUtils.isEmpty(source) ? ObjectUtils.isEmpty(target) : (!ObjectUtils.isEmpty(target) && source.getClass() == (target.getClass()));
     }
 }

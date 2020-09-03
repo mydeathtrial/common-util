@@ -1,6 +1,6 @@
 # common-util:公共工具包
-设计初衷为解决代码复用问题，其中最具特色的工具为`cloud.agileframework.common.util.object.ObjectUtil`中的对象深度转换能力，方法为`ObjectUtil.to`
-该能力是Agile系列框架高代码复用率的根本所在。其大量应用于请求参数解析、验证、持久层查询结果转换等功能当中，是目前开源项目中独树一帜的功能，其能够完成n层对象嵌套、
+设计初衷是为大面积提高代码复用度，涵盖各方面通用代码工具。其中最具特色的工具`cloud.agileframework.common.util.object.ObjectUtil`中的对象深度转换能力，
+该能力是Agile系列框架高代码复用率的根本所在。其大量应用于请求参数解析、验证、持久层查询结果转换等功能当中，是目前开源项目中独树一帜的特有组件，其能够完成n层对象嵌套、
 集合类型嵌套、模糊识别（如驼峰、下划线风格属性互转）、逗号分隔字符串转集合、日期字符串分析、注解别名、识别set、get、复杂属性拷贝等能力。
 
 ----
@@ -14,7 +14,7 @@
 其包含的工具包种类极其丰富，只有您想象不到，没有它做不到的能力，并且该能力仍在持续更新中
 
 * **特色能力**
-力求创作具有特色化能力，避免重复造轮子，对开发中常用的commons-lang3等工具集中已涵盖的能力不做重复设计。特色能力如：
+力求创作具有特色化能力的工具，避免重复造轮子，对开发中常用的commons-lang3等工具集中已涵盖的能力不做重复设计。特色能力如：
 <br> ClassUtil（反射工具，获取各种形式的类信息，包括注解解析等能力）
 <br> TreeUtil（树形工具，平行数据集转树形集合结构，支持累加字段，常用于字典数据转换）
 <br> DateUtil（日期解析工具，在不提供dataFormat的情况下，自主识别日期）
@@ -36,7 +36,7 @@
 #### 步骤 1: 下载包
 您可以从[最新稳定版本]下载包(https://github.com/mydeathtrial/common-util/releases).
 该包已上传至maven中央仓库，可在pom中直接声明引用
-以版本agile-sql-1.0.jar为例。
+以版本common-util-2.0.0.jar为例。
 
 #### 步骤 2: 添加maven依赖
 ```xml
@@ -53,7 +53,7 @@
         <dependency>
             <groupId>cloud.agileframework</groupId>
             <artifactId>common-util</artifactId>
-            <version>1.0</version>
+            <version>2.0.0</version>
         </dependency>
     </dependencies>
 ```
@@ -214,3 +214,4 @@ public class YourClass{
 2020-08-07 14:48:27
 1970-03-20 20:08:27
 ```
+文档编写中...

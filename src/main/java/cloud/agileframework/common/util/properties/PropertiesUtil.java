@@ -1,6 +1,7 @@
 package cloud.agileframework.common.util.properties;
 
 import cloud.agileframework.common.constant.Constant;
+import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.file.JarUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
@@ -62,29 +63,32 @@ public class PropertiesUtil {
     /**
      * 配置文件优先级
      */
-    private static final String[] overrideConfig = new String[]{"application"};
+    private static final String[] OVERRIDE_CONFIG = new String[]{"application"};
 
     /**
      * 日志
      */
-    private static Log log = LogFactory.getLog(PropertiesUtil.class);
+    private static final Log log = LogFactory.getLog(PropertiesUtil.class);
 
     /**
      * 最终配置集
      */
-    private static Properties properties = new Properties();
+    private static final Properties properties = new Properties();
 
     /**
      * 扫描到的配置文件集
      */
-    private static Set<String> fileNames = Sets.newHashSet();
+    private static final Set<String> fileNames = Sets.newHashSet();
 
     /**
      * 初始化静态块
      */
     static {
+        // 获取启动类
+        String className = ((StackTraceElement) ArrayUtil.last(new RuntimeException().getStackTrace())).getClassName();
+
         // 读取jar包配置
-        readJar("com.agile");
+        readJar(className.substring(0, className.lastIndexOf(".")));
 
         // 读取编译目录配置文件
         readDir();
@@ -96,9 +100,6 @@ public class PropertiesUtil {
     }
 
     private static void parsePlaceholder() {
-        if (properties == null) {
-            return;
-        }
         for (Map.Entry<Object, Object> v : properties.entrySet()) {
             if (v.getValue() instanceof String) {
                 properties.setProperty(String.valueOf(v.getKey()), StringUtil.parsingPlaceholder("${", "}", String.valueOf(v.getValue()), properties));
@@ -172,7 +173,7 @@ public class PropertiesUtil {
      */
     private static Predicate<String> filterOverrideConfigName(Set<String> overrideConfigFileNames) {
         return name -> {
-            for (String overrideConfigName : overrideConfig) {
+            for (String overrideConfigName : OVERRIDE_CONFIG) {
                 if (name.contains(overrideConfigName + ".")) {
                     overrideConfigFileNames.add(name);
                     return false;
@@ -466,23 +467,23 @@ public class PropertiesUtil {
             InputStream stream = null;
 
             File file = new File(fileName);
-            if(file.exists()){
+            if (file.exists()) {
                 stream = new FileInputStream(file);
-            }else{
+            } else {
                 if (!fileName.endsWith(".json")) {
                     fileName = fileName + ".json";
                 }
                 String path = getFileClassPath(fileName);
-                if(path != null){
+                if (path != null) {
                     stream = PropertiesUtil.class.getResourceAsStream(path);
                 }
             }
 
-            if(stream == null){
+            if (stream == null) {
                 return null;
             }
 
-            return (JSON)JSON.parse(StreamUtil.toString(stream));
+            return (JSON) JSON.parse(StreamUtil.toString(stream));
         } catch (Exception e) {
             return null;
         }

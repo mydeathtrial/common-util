@@ -33,7 +33,7 @@ public class JSONUtil extends JSON {
         if (javaObject == null) {
             return null;
         }
-        return (JSON) parse(javaObject.toString());
+        return (JSON)JSON.toJSON(javaObject);
     }
 
     /**

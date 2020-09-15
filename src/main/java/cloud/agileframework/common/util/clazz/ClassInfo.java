@@ -98,9 +98,9 @@ public class ClassInfo<T> {
      * @return 构造方法
      */
     public Constructor<T> getConstructor(Class<?>... parameterTypes) {
-        final String targetKey = Arrays.stream(parameterTypes).map(Class::getCanonicalName).collect(Collectors.joining());
+        final String cacheKey = Arrays.stream(parameterTypes).map(Class::getCanonicalName).collect(Collectors.joining());
 
-        Constructor<T> constructor = constructors.get(targetKey);
+        Constructor<T> constructor = constructors.get(cacheKey);
         if (constructor == null) {
             try {
                 if (parameterTypes.length > 0) {
@@ -111,7 +111,7 @@ public class ClassInfo<T> {
                 constructor.setAccessible(true);
             } catch (NoSuchMethodException ignored) {
             }
-            constructors.put(targetKey, constructor);
+            constructors.put(cacheKey, constructor);
         }
         return constructor;
     }
@@ -143,16 +143,16 @@ public class ClassInfo<T> {
         return targetField;
     }
 
-    public Method getMethod(String key, Class<?>... paramTypes) {
-        final String targetKey = key + Arrays.stream(paramTypes).map(Class::getCanonicalName).collect(Collectors.joining());
-        Method targetMethod = methodMap.get(targetKey);
+    public Method getMethod(String methodName, Class<?>... paramTypes) {
+        final String cacheKey = methodName + Arrays.stream(paramTypes).map(Class::getCanonicalName).collect(Collectors.joining());
+        Method targetMethod = methodMap.get(cacheKey);
 
         if (targetMethod != null) {
             return targetMethod;
         }
         if (paramTypes != null) {
             try {
-                targetMethod = clazz.getMethod(targetKey, paramTypes);
+                targetMethod = clazz.getMethod(methodName, paramTypes);
             } catch (NoSuchMethodException ex) {
                 throw new IllegalStateException("Expected method not found: " + ex);
             }
@@ -160,20 +160,20 @@ public class ClassInfo<T> {
             Set<Method> candidates = new HashSet<>(1);
             Method[] methods = clazz.getMethods();
             for (Method method : methods) {
-                if (targetKey.equals(method.getName())) {
+                if (methodName.equals(method.getName())) {
                     candidates.add(method);
                 }
             }
             if (candidates.size() == 1) {
                 targetMethod = candidates.iterator().next();
             } else if (candidates.isEmpty()) {
-                throw new IllegalStateException("Expected method not found: " + clazz.getName() + '.' + targetKey);
+                throw new IllegalStateException("Expected method not found: " + clazz.getName() + '.' + methodName);
             } else {
-                throw new IllegalStateException("No unique method found: " + clazz.getName() + '.' + targetKey);
+                throw new IllegalStateException("No unique method found: " + clazz.getName() + '.' + methodName);
             }
         }
 
-        methodMap.put(targetKey, targetMethod);
+        methodMap.put(cacheKey, targetMethod);
         return targetMethod;
     }
 

@@ -184,6 +184,9 @@ public class JSONUtil extends JSON {
             try {
                 Field field = ClassUtil.getField(o.getClass(), key);
                 if (field != null) {
+                    if(!field.isAccessible()){
+                        field.setAccessible(true);
+                    }
                     result = field.get(o);
                 }
             } catch (IllegalAccessException ignored) {

@@ -50,7 +50,7 @@ public class StringUtil extends StringUtils {
         // 最终结果
         String result = null;
 
-        if (keys.size() > 0) {
+        if (!keys.isEmpty()) {
             if (keys.contains(source)) {
                 result = source;
             } else {

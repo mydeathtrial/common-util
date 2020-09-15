@@ -222,7 +222,7 @@ public class ClassInfo<T> {
 
     public Set<Field> getAllField() {
         if (allField == null) {
-            allField = Sets.newHashSet();
+            allField = Sets.newConcurrentHashSet();
         }
         if (allField.isEmpty()) {
             extractFieldRecursion(clazz, allField);
@@ -252,7 +252,7 @@ public class ClassInfo<T> {
 
     public Set<Method> getAllMethod() {
         if (allMethod == null) {
-            allMethod = Sets.newHashSet();
+            allMethod = Sets.newConcurrentHashSet();
         }
         if (allMethod.isEmpty()) {
             extractMethodRecursion(clazz, allMethod);

@@ -92,6 +92,10 @@ public class ObjectUtilTest {
         });
         System.out.println(System.currentTimeMillis()-currentTime);
         System.out.println(System.currentTimeMillis()-start);
+
+        DemoA b = new DemoA();
+        ObjectUtil.copyProperties(a,b);
+        System.out.println(System.currentTimeMillis()-currentTime);
     }
 
     /**

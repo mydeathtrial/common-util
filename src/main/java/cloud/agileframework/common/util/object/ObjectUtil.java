@@ -166,6 +166,14 @@ public class ObjectUtil extends ObjectUtils {
         if (toClass.isEnum()) {
             try {
                 Class<?> enumClass = toClass.getWrapperClass();
+
+                String sourceName;
+
+                if(from.getClass().isEnum()){
+                    sourceName = ((Enum)from).name();
+                }else{
+                    sourceName = from.toString();
+                }
                 Method values = enumClass.getMethod("values");
                 if (!values.isAccessible()) {
                     values.setAccessible(true);
@@ -174,7 +182,7 @@ public class ObjectUtil extends ObjectUtils {
                 Enum<?>[] v = (Enum<?>[]) values.invoke(null);
 
                 List<String> nameList = Stream.of(v).map(Enum::name).collect(Collectors.toList());
-                String targetName = StringUtil.vagueMatches(from.toString(), nameList);
+                String targetName = StringUtil.vagueMatches(sourceName, nameList);
 
                 if (targetName != null) {
                     Method valueOf = enumClass.getMethod("valueOf", String.class);
@@ -189,7 +197,7 @@ public class ObjectUtil extends ObjectUtils {
                             .filter(Objects::nonNull)
                             .map(Enum::toString)
                             .collect(Collectors.toList());
-                    targetName = StringUtil.vagueMatches(from.toString(), nameList);
+                    targetName = StringUtil.vagueMatches(sourceName, nameList);
                     return (T) map.get(targetName);
                 }
             } catch (Exception ignored) {
@@ -336,17 +344,18 @@ public class ObjectUtil extends ObjectUtils {
             T object = ClassUtil.newInstance(toClass);
             if (object != null) {
                 Set<Field> fields = ClassUtil.getAllField(toClass);
-                fields.parallelStream().forEach(field -> {
-                    String key = StringUtil.vagueMatches(field.getName(), map.keySet());
-                    if (key != null) {
-                        try {
-                            Object value = map.get(key);
+                fields.parallelStream()
+                        .forEach(field -> {
+                            String key = StringUtil.vagueMatches(field.getName(), map.keySet());
+                            if (key != null) {
+                                try {
+                                    Object value = map.get(key);
 
-                            setValue(object, field, value);
-                        } catch (IllegalArgumentException ignored) {
-                        }
-                    }
-                });
+                                    setValue(object, field, value);
+                                } catch (IllegalArgumentException ignored) {
+                                }
+                            }
+                        });
                 if (!isNotChange(object)) {
                     return object;
                 }
@@ -760,19 +769,17 @@ public class ObjectUtil extends ObjectUtils {
         Class<?> targetClass = target.getClass();
         Set<String> result = new HashSet<>();
         if (sourceClass == targetClass) {
-            Set<Field> sourceFields = ClassUtil.getAllField(sourceClass);
-            for (Field field : sourceFields) {
-                result.add(field.getName());
-            }
+            ClassUtil.getAllField(sourceClass)
+                    .parallelStream()
+                    .forEach(field -> result.add(field.getName()));
         } else {
-            Set<Field> sourceFields = ClassUtil.getAllField(sourceClass);
-            for (Field field : sourceFields) {
+            ClassUtil.getAllField(sourceClass).parallelStream().forEach(field -> {
                 String name = field.getName();
                 Field targetField = ClassUtil.getField(targetClass, name);
                 if (targetField != null) {
                     result.add(name);
                 }
-            }
+            });
         }
         return result;
     }
@@ -827,50 +834,51 @@ public class ObjectUtil extends ObjectUtils {
             return;
         }
 
-        Set<Field> targetFields = ClassUtil.getAllField(target.getClass());
-        for (Field field : targetFields) {
-            String propertyName = field.getName();
+        ClassUtil.getAllField(target.getClass())
+                .parallelStream()
+                .forEach(field -> {
+                    String propertyName = field.getName();
 
-            propertyName = StringUtils.isBlank(prefix) ? propertyName : prefix + StringUtil.toUpperName(propertyName);
-            propertyName = StringUtils.isBlank(suffix) ? propertyName : propertyName + StringUtil.toUpperName(suffix);
+                    propertyName = StringUtils.isBlank(prefix) ? propertyName : prefix + StringUtil.toUpperName(propertyName);
+                    propertyName = StringUtils.isBlank(suffix) ? propertyName : propertyName + StringUtil.toUpperName(suffix);
 
-            Field sourceProperty = ClassUtil.getField(source.getClass(), propertyName);
-            if (sourceProperty == null) {
-                continue;
-            }
-            if (arguments == null) {
-                continue;
-            }
-
-            switch (containOrExclude) {
-                case EXCLUDE:
-                    if (ArrayUtils.contains(arguments, sourceProperty.getName())) {
-                        continue;
+                    Field sourceProperty = ClassUtil.getField(source.getClass(), propertyName);
+                    if (sourceProperty == null) {
+                        return;
                     }
-                    break;
-                case INCLUDE:
-                    if (!ArrayUtils.contains(arguments, sourceProperty.getName())) {
-                        continue;
+                    if (arguments == null) {
+                        return;
                     }
-                    break;
-                default:
-            }
 
-            try {
-                Object value = sourceProperty.get(source);
+                    switch (containOrExclude) {
+                        case EXCLUDE:
+                            if (ArrayUtils.contains(arguments, sourceProperty.getName())) {
+                                return;
+                            }
+                            break;
+                        case INCLUDE:
+                            if (!ArrayUtils.contains(arguments, sourceProperty.getName())) {
+                                return;
+                            }
+                            break;
+                        default:
+                    }
 
-                if (value != null) {
-                    Type type = field.getGenericType();
-                    TypeReference<Object> typeReference = new TypeReference<>(type);
-                    value = to(value, typeReference);
-                }
+                    try {
+                        Object value = sourceProperty.get(source);
 
-                setValue(target, field, value);
+                        if (value != null) {
+                            Type type = field.getGenericType();
+                            TypeReference<Object> typeReference = new TypeReference<>(type);
+                            value = to(value, typeReference);
+                        }
 
-            } catch (Exception ignored) {
+                        setValue(target, field, value);
 
-            }
-        }
+                    } catch (Exception ignored) {
+
+                    }
+                });
     }
 
     /**
@@ -961,7 +969,7 @@ public class ObjectUtil extends ObjectUtils {
                 T object = clazz.newInstance();
 
                 Set<Field> fields = ClassUtil.getAllField(clazz);
-                fields.forEach(field -> {
+                fields.parallelStream().forEach(field -> {
                     String key = coverFieldNameToMapKey(clazz, field, prefix, suffix, map);
                     if (key != null) {
                         try {
@@ -1091,7 +1099,7 @@ public class ObjectUtil extends ObjectUtils {
         Class<?> clazz = object.getClass();
         try {
             Object newObject = clazz.newInstance();
-            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
+            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).parallelStream().filter(field -> {
                 try {
                     if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
@@ -1162,7 +1170,7 @@ public class ObjectUtil extends ObjectUtils {
         Set<Field> fields = ClassUtil.getAllField(o.getClass());
         Map<String, Object> result = new HashMap<>(fields.size());
         if (!fields.isEmpty()) {
-            for (Field field : fields) {
+            fields.parallelStream().forEach(field -> {
                 String key = StringUtil.toUnderline(field.getName());
                 try {
                     if (!field.isAccessible()) {
@@ -1171,7 +1179,7 @@ public class ObjectUtil extends ObjectUtils {
                     result.put(key, field.get(o));
                 } catch (IllegalAccessException ignored) {
                 }
-            }
+            });
         }
         return result;
     }
@@ -1225,22 +1233,31 @@ public class ObjectUtil extends ObjectUtils {
         Object sourceObject = isEmpty(source) ? target : source;
         Object targetObject = isEmpty(source) ? source : target;
         Class<?> sourceClass = sourceObject.getClass();
-        Set<Field> fields = ClassUtil.getAllField(sourceClass);
-        for (Field field : fields) {
-            if (excludeProperty != null && ArrayUtils.contains(excludeProperty, field.getName())) {
-                continue;
-            }
-            if (!field.isAccessible()) {
-                field.setAccessible(true);
-            }
-            Object sourceValue = field.get(sourceObject);
-            Object targetValue = field.get(targetObject);
-            if (compare(sourceValue, targetValue)) {
-                continue;
-            }
+        ClassUtil.getAllField(sourceClass)
+                .parallelStream()
+                .forEach(field -> {
+                    if (excludeProperty != null && ArrayUtils.contains(excludeProperty, field.getName())) {
+                        return;
+                    }
+                    if (!field.isAccessible()) {
+                        field.setAccessible(true);
+                    }
+                    Object sourceValue;
+                    Object targetValue;
+                    try {
+                        sourceValue = field.get(sourceObject);
+                        targetValue = field.get(targetObject);
+                    } catch (IllegalAccessException e) {
+                        return;
+                    }
 
-            result.add(new Different(field.getName(), field.getType().getTypeName(), String.valueOf(targetValue), String.valueOf(sourceValue)));
-        }
+                    if (compare(sourceValue, targetValue)) {
+                        return;
+                    }
+
+                    result.add(new Different(field.getName(), field.getType().getTypeName(), String.valueOf(targetValue), String.valueOf(sourceValue)));
+                });
+
         return result;
     }
 

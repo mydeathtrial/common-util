@@ -4,7 +4,6 @@ import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.json.JSONUtil;
 import cloud.agileframework.common.util.pattern.PatternUtil;
-import com.google.common.collect.Sets;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -13,9 +12,9 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
 import static org.apache.commons.io.FilenameUtils.EXTENSION_SEPARATOR;
 
@@ -36,41 +35,36 @@ public class StringUtil extends StringUtils {
      * @return targets中与原字符串相似度最高的字符串
      */
     public static String vagueMatches(String source, Iterable<String> targets) {
-        // 根据source构建模糊匹配正则
-        String fuzzyMatching = camelToMatchesRegex(source);
+        String result = StreamSupport.stream(targets.spliterator(),true)
+                .filter(target-> target.equals(source))
+                .findFirst().orElse(null);
 
-        // 构建模糊匹配结果容器，装填匹配到的字符串
-        Set<String> keys = Sets.newHashSetWithExpectedSize(2);
-        targets.forEach(key -> {
-            if (PatternUtil.matches(fuzzyMatching, key, Pattern.CASE_INSENSITIVE)) {
-                keys.add(key);
-            }
-        });
-
-        // 最终结果
-        String result = null;
-
-        if (!keys.isEmpty()) {
-            if (keys.contains(source)) {
-                result = source;
-            } else {
-                String camelToUnderlineKey = toUnderline(source);
-                String camelToUnderlineKeyUpper = camelToUnderlineKey.toUpperCase();
-                String camelToUnderlineKeyLower = camelToUnderlineKey.toLowerCase();
-
-                if (keys.contains(camelToUnderlineKey)) {
-                    result = camelToUnderlineKey;
-                } else if (keys.contains(camelToUnderlineKeyUpper)) {
-                    result = camelToUnderlineKeyUpper;
-                } else if (keys.contains(camelToUnderlineKeyLower)) {
-                    result = camelToUnderlineKeyLower;
-                }
-            }
-
-            if (result == null) {
-                result = keys.iterator().next();
-            }
+        if(result == null){
+            result = StreamSupport.stream(targets.spliterator(),true)
+                    .filter(target->
+                        target.equalsIgnoreCase(source)
+                    )
+                    .findFirst().orElse(null);
         }
+
+        if(result == null){
+            String camelSource = toCamel(source);
+            String underlineSource = toUnderline(source);
+            result = StreamSupport.stream(targets.spliterator(),true)
+                    .filter(target->
+                      target.equalsIgnoreCase(camelSource) || target.equalsIgnoreCase(underlineSource)
+                    )
+                    .findFirst().orElse(null);
+        }
+
+        if(result == null){
+            // 根据source构建模糊匹配正则
+            String fuzzyMatching = camelToMatchesRegex(source);
+            result = StreamSupport.stream(targets.spliterator(),true)
+                    .filter(target-> PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE))
+                    .findFirst().orElse(null);
+        }
+
         return result;
     }
 

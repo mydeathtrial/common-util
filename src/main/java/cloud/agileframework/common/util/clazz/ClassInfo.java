@@ -26,14 +26,14 @@ import java.util.stream.Collectors;
 public class ClassInfo<T> {
     private static final Map<Class<?>, ClassInfo<?>> CACHE = Maps.newHashMap();
     private final Class<T> clazz;
-    private final Map<String, Constructor<T>> constructors = Maps.newHashMap();
+    private Map<String, Constructor<T>> constructors;
     private Constructor<T> privateConstructor;
     private Set<Field> allField;
     private Set<Method> allMethod;
-    private Map<String, Field> fieldMap = Maps.newHashMap();
-    private Map<String, Method> methodMap = Maps.newHashMap();
-    private final Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> fieldAnnotations = Maps.newHashMap();
-    private final Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> methodAnnotations = Maps.newHashMap();
+    private Map<String, Field> fieldMap;
+    private Map<String, Method> methodMap;
+    private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> fieldAnnotations;
+    private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> methodAnnotations;
 
     public ClassInfo(Class<T> clazz) {
         this.clazz = clazz;
@@ -49,7 +49,11 @@ public class ClassInfo<T> {
     }
 
     public <A extends Annotation> Set<ClassUtil.Target<A>> getAllFieldAnnotation(Class<A> annotationClass) {
-        Set<ClassUtil.Target<?>> set = fieldAnnotations.get(annotationClass);
+        Set<ClassUtil.Target<?>> set = null;
+        if (fieldAnnotations != null) {
+            set = fieldAnnotations.get(annotationClass);
+        }
+
         if (set == null) {
             Set<Field> fields = getAllField();
             set = Sets.newHashSetWithExpectedSize(fields.size());
@@ -60,6 +64,9 @@ public class ClassInfo<T> {
                     set.add(new ClassUtil.Target<>(field, annotation));
                 }
             }
+            if (fieldAnnotations == null) {
+                fieldAnnotations = Maps.newHashMap();
+            }
             fieldAnnotations.put(annotationClass, set);
         }
 
@@ -68,7 +75,10 @@ public class ClassInfo<T> {
 
     public <A extends Annotation> Set<ClassUtil.Target<A>> getAllMethodAnnotation(Class<A> annotationClass) {
 
-        Set<ClassUtil.Target<?>> set = methodAnnotations.get(annotationClass);
+        Set<ClassUtil.Target<?>> set = null;
+        if (methodAnnotations != null) {
+            set = methodAnnotations.get(annotationClass);
+        }
         if (set == null) {
             Set<Method> methods = getAllMethod();
             set = Sets.newHashSetWithExpectedSize(methods.size());
@@ -77,6 +87,9 @@ public class ClassInfo<T> {
                 if (annotation != null) {
                     set.add(new ClassUtil.Target<>(method, annotation));
                 }
+            }
+            if (methodAnnotations == null) {
+                methodAnnotations = Maps.newHashMap();
             }
             methodAnnotations.put(annotationClass, set);
         }
@@ -100,7 +113,10 @@ public class ClassInfo<T> {
     public Constructor<T> getConstructor(Class<?>... parameterTypes) {
         final String cacheKey = Arrays.stream(parameterTypes).map(Class::getCanonicalName).collect(Collectors.joining());
 
-        Constructor<T> constructor = constructors.get(cacheKey);
+        Constructor<T> constructor = null;
+        if (constructors != null) {
+            constructor = constructors.get(cacheKey);
+        }
         if (constructor == null) {
             try {
                 if (parameterTypes.length > 0) {
@@ -111,13 +127,20 @@ public class ClassInfo<T> {
                 constructor.setAccessible(true);
             } catch (NoSuchMethodException ignored) {
             }
+            if (constructors == null) {
+                constructors = Maps.newHashMap();
+            }
             constructors.put(cacheKey, constructor);
         }
         return constructor;
     }
 
     public Field getField(String key) {
-        Field targetField = fieldMap.get(key);
+        Field targetField = null;
+        if (fieldMap != null) {
+            targetField = fieldMap.get(key);
+        }
+
         if (targetField == null) {
             Set<Field> fields = getAllField();
             Map<String, Field> targetFields = Maps.newHashMap();
@@ -137,6 +160,12 @@ public class ClassInfo<T> {
             }
 
             if (targetField != null) {
+                if (!targetField.isAccessible()) {
+                    targetField.setAccessible(true);
+                }
+                if (fieldMap == null) {
+                    fieldMap = Maps.newHashMap();
+                }
                 fieldMap.put(key, targetField);
             }
         }
@@ -145,7 +174,10 @@ public class ClassInfo<T> {
 
     public Method getMethod(String methodName, Class<?>... paramTypes) {
         final String cacheKey = methodName + Arrays.stream(paramTypes).map(Class::getCanonicalName).collect(Collectors.joining());
-        Method targetMethod = methodMap.get(cacheKey);
+        Method targetMethod = null;
+        if (methodMap != null) {
+            targetMethod = methodMap.get(cacheKey);
+        }
 
         if (targetMethod != null) {
             return targetMethod;
@@ -172,33 +204,16 @@ public class ClassInfo<T> {
                 throw new IllegalStateException("No unique method found: " + clazz.getName() + '.' + methodName);
             }
         }
+        if (!targetMethod.isAccessible()) {
+            targetMethod.setAccessible(true);
+        }
+
+        if (methodMap == null) {
+            methodMap = Maps.newHashMap();
+        }
 
         methodMap.put(cacheKey, targetMethod);
         return targetMethod;
-    }
-
-    public void setAllField(Set<Field> allField) {
-        this.allField = allField;
-    }
-
-    public void setAllMethod(Set<Method> allMethod) {
-        this.allMethod = allMethod;
-    }
-
-    public Map<String, Field> getFieldMap() {
-        return fieldMap;
-    }
-
-    public Map<String, Method> getMethodMap() {
-        return methodMap;
-    }
-
-    public void setFieldMap(Map<String, Field> fieldMap) {
-        this.fieldMap = fieldMap;
-    }
-
-    public void setMethodMap(Map<String, Method> methodMap) {
-        this.methodMap = methodMap;
     }
 
     public Class<?> getClazz() {
@@ -211,6 +226,7 @@ public class ClassInfo<T> {
         }
         if (allField.isEmpty()) {
             extractFieldRecursion(clazz, allField);
+            allField.parallelStream().forEach(field -> field.setAccessible(true));
         }
         return allField;
     }
@@ -240,6 +256,7 @@ public class ClassInfo<T> {
         }
         if (allMethod.isEmpty()) {
             extractMethodRecursion(clazz, allMethod);
+            allMethod.parallelStream().forEach(method -> method.setAccessible(true));
         }
         return allMethod;
     }
@@ -261,13 +278,5 @@ public class ClassInfo<T> {
             return;
         }
         extractMethodRecursion(superClass, set);
-    }
-
-    public Map<String, Field> getField() {
-        return fieldMap;
-    }
-
-    public Map<String, Method> getMethod() {
-        return methodMap;
     }
 }

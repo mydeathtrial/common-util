@@ -29,7 +29,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -444,9 +443,7 @@ public class ObjectUtil extends ObjectUtils {
                     if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
                     }
-                    if (!field.isAccessible()) {
-                        field.setAccessible(true);
-                    }
+
                     Object currentValue = field.get(object);
                     Object initValue = field.get(newObject);
                     return currentValue != null && !Objects.deepEquals(currentValue, initValue);
@@ -482,16 +479,16 @@ public class ObjectUtil extends ObjectUtils {
         Optional<Object> optional = Optional.ofNullable(value);
         if (optional.isPresent()) {
             Type fieldType = field.getGenericType();
-            String setMethodName = "set" + StringUtil.toUpperName(fieldName);
+            String setMethodName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
             Method setMethod;
-            //取默认值
-            Object initValue = null;
-            try {
-                if (!field.isAccessible()) {
-                    field.setAccessible(true);
-                }
-                initValue = field.get(object);
-            } catch (Exception ignored) {
+
+            List<Method> list = ClassUtil.getAllMethod(objectClass).stream()
+                    .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
+                    .collect(Collectors.toList());
+
+            if (list.isEmpty()) {
+                setValueIfNotNull(object, field, value);
+                return;
             }
 
             //取方法入参类型与属性类型相同方法尝试
@@ -502,56 +499,41 @@ public class ObjectUtil extends ObjectUtils {
                     invokeMethodIfParamNotNull(object, setMethod, to(value, new TypeReference<>(fieldType)));
                 } else {
                     setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) fieldType);
-
                     invokeMethodIfParamNotNull(object, setMethod, value);
                 }
-
+                return;
             } catch (Exception ignored) {
             }
 
             //取方法入参类型与值类型相同方法尝试
             try {
-                if (Objects.equals(field.get(object), initValue)) {
-                    setMethod = ClassUtil.getMethod(objectClass, setMethodName, value.getClass());
-                    invokeMethodIfParamNotNull(object, setMethod, value);
-                }
+                setMethod = ClassUtil.getMethod(objectClass, setMethodName, value.getClass());
+                invokeMethodIfParamNotNull(object, setMethod, value);
+                return;
             } catch (Exception ignored) {
             }
 
             //终极解决方式
             try {
-                if (Objects.equals(field.get(object), initValue)) {
-                    List<Method> list = Arrays.stream(objectClass.getMethods())
-                            .filter(method -> setMethodName.equals(method.getName()))
-                            .collect(Collectors.toList());
-
-                    for (Method method : list) {
-                        try {
-                            invokeMethodIfParamNotNull(object, method, value);
-                            if (field.get(object) != initValue) {
-                                return;
-                            }
-                        } catch (Exception ignored) {
-                        }
+                for (Method method : list) {
+                    try {
+                        invokeMethodIfParamNotNull(object, method, value);
+                        return;
+                    } catch (Exception ignored) {
                     }
                 }
             } catch (Exception ignored) {
             }
 
             try {
-                if (Objects.equals(field.get(object), initValue)) {
-                    //将来值类型与属性类型相同时，直接设置
-                    setValueIfNotNull(object, field, value);
-                }
+                //将来值类型与属性类型相同时，直接设置
+                setValueIfNotNull(object, field, value);
             } catch (Exception ignored) {
             }
 
         } else {
             if (!field.getType().isPrimitive()) {
                 try {
-                    if (!field.isAccessible()) {
-                        field.setAccessible(true);
-                    }
                     field.set(object, null);
                 } catch (Exception ignored) {
                 }
@@ -568,9 +550,6 @@ public class ObjectUtil extends ObjectUtils {
      * @param value  值
      */
     private static void invokeMethodIfParamNotNull(Object object, Method method, Object value) {
-        if (object == null || method == null || value == null) {
-            return;
-        }
         Class<?>[] parameterTypes = method.getParameterTypes();
         if (parameterTypes.length == 1) {
             Optional.ofNullable(to(value, new TypeReference<>(parameterTypes[0])))
@@ -594,9 +573,6 @@ public class ObjectUtil extends ObjectUtils {
 
         Optional.ofNullable(to(value, new TypeReference<>(field.getGenericType()))).ifPresent(v -> {
             try {
-                if (!field.isAccessible()) {
-                    field.setAccessible(true);
-                }
                 field.set(object, v);
             } catch (Exception ignored) {
             }
@@ -881,10 +857,6 @@ public class ObjectUtil extends ObjectUtils {
             }
 
             try {
-                if (!sourceProperty.isAccessible()) {
-                    sourceProperty.setAccessible(true);
-                }
-
                 Object value = sourceProperty.get(source);
 
                 if (value != null) {

@@ -34,6 +34,7 @@ public class ClassInfo<T> {
     private Map<String, Method> methodMap;
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> fieldAnnotations;
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> methodAnnotations;
+    private Map<Field, FieldInfo> fieldInfoCache;
 
     public ClassInfo(Class<T> clazz) {
         this.clazz = clazz;
@@ -278,5 +279,17 @@ public class ClassInfo<T> {
             return;
         }
         extractMethodRecursion(superClass, set);
+    }
+
+    public FieldInfo getFieldInfo(Field field) {
+        if (fieldInfoCache == null) {
+            fieldInfoCache = Maps.newConcurrentMap();
+        }
+        FieldInfo fieldInfo = fieldInfoCache.get(field);
+        if (fieldInfo == null) {
+            fieldInfo = new FieldInfo(field);
+            fieldInfoCache.put(field, fieldInfo);
+        }
+        return fieldInfo;
     }
 }

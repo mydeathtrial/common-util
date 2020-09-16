@@ -1,7 +1,10 @@
 package com.agile.common.data;
 
 import com.google.common.collect.Maps;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
@@ -15,7 +18,9 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class DemoA {
+@Setter
+@Getter
+public class DemoA implements Serializable {
     private String attr_String1;
     private String attrString2;
     private int attrInt;
@@ -55,15 +60,27 @@ public class DemoA {
     private Integer[] integersArray;
 
     private DemoEnum demoEnum;
-//
+
     private DemoEnum[] demoEnumArray;
 
     public void setAttrLong(long attrLong) {
         this.attrLong = attrLong;
     }
 
+    public void setAttrLong(String attrLong) {
+        this.attrLong = Long.getLong(attrLong);
+    }
+    public void setAttrLong(int attrLong) {
+        this.attrLong = attrLong;
+    }
+
+
     public void setAttrString2(StringBuilder attrString2) {
         this.attrString2 = attrString2.toString();
+    }
+
+    public void setDemoAList(List<DemoA> demoAList) {
+        this.demoAList = demoAList;
     }
 
     public static Map<String, Object> testData() {
@@ -80,7 +97,7 @@ public class DemoA {
         map.put("attrByte", "6");
 
         map.put("attr_int", "100");
-        map.put("attr_Long", "222");
+        map.put("attr_Long", "22233");
         map.put("attr_Char", "c");
         map.put("attr_Short", "33");
         map.put("attr_Float", "44.02");

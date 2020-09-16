@@ -2,7 +2,9 @@ package cloud.agileframework.common.util.object;
 
 import cloud.agileframework.common.annotation.Alias;
 import cloud.agileframework.common.constant.Constant;
+import cloud.agileframework.common.util.clazz.ClassInfo;
 import cloud.agileframework.common.util.clazz.ClassUtil;
+import cloud.agileframework.common.util.clazz.FieldInfo;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.map.MapUtil;
@@ -25,7 +27,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -37,7 +38,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -169,9 +169,9 @@ public class ObjectUtil extends ObjectUtils {
 
                 String sourceName;
 
-                if(from.getClass().isEnum()){
-                    sourceName = ((Enum)from).name();
-                }else{
+                if (from.getClass().isEnum()) {
+                    sourceName = ((Enum) from).name();
+                } else {
                     sourceName = from.toString();
                 }
                 Method values = enumClass.getMethod("values");
@@ -343,10 +343,12 @@ public class ObjectUtil extends ObjectUtils {
 
             T object = ClassUtil.newInstance(toClass);
             if (object != null) {
-                Set<Field> fields = ClassUtil.getAllField(toClass);
-                fields.parallelStream()
+                ClassUtil.getAllField(toClass)
+                        .parallelStream()
                         .forEach(field -> {
-                            String key = StringUtil.vagueMatches(field.getName(), map.keySet());
+                            String key;
+                            key = StringUtil.vagueMatches(field.getName(), map.keySet());
+
                             if (key != null) {
                                 try {
                                     Object value = map.get(key);
@@ -366,7 +368,7 @@ public class ObjectUtil extends ObjectUtils {
                 if (json instanceof JSON) {
                     return toPOJO(json, toClass);
                 }
-            } catch (Exception e) {
+            } catch (Exception ignored) {
             }
         } else {
             T object = ClassUtil.newInstance(toClass);
@@ -481,57 +483,49 @@ public class ObjectUtil extends ObjectUtils {
      * @param value  值
      */
     public static void setValue(Object object, Field field, Object value) {
-        object = Optional.ofNullable(object).orElseThrow(IllegalArgumentException::new);
-
         Class<?> objectClass = object.getClass();
-        String fieldName = field.getName();
-        Optional<Object> optional = Optional.ofNullable(value);
-        if (optional.isPresent()) {
-            Type fieldType = field.getGenericType();
-            String setMethodName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-            Method setMethod;
 
-            List<Method> list = ClassUtil.getAllMethod(objectClass).stream()
-                    .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
-                    .collect(Collectors.toList());
+        if (value != null) {
+            FieldInfo fieldInfo = ClassInfo.getCache(objectClass).getFieldInfo(field);
 
-            if (list.isEmpty()) {
-                setValueIfNotNull(object, field, value);
-                return;
+            // 如果set方法还未初始化，则开始初始化
+            if (fieldInfo.isNoSetters() == null) {
+                String setMethodName = "set" + StringUtil.toUpperName(field.getName());
+
+                List<Method> list = ClassUtil.getAllMethod(objectClass).stream()
+                        .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
+                        .sorted((a, b) -> b.getName().compareTo(a.getName()))
+                        .map(method -> {
+                            fieldInfo.putSetter(method);
+                            return method;
+                        })
+                        .collect(Collectors.toList());
+
+                // 设置该属性是否具备set方法
+                fieldInfo.setNoSetters(list.isEmpty());
             }
 
-            //取方法入参类型与属性类型相同方法尝试
-            try {
-                if (ParameterizedType.class.isAssignableFrom(fieldType.getClass())) {
-                    Type rawType = ((ParameterizedType) fieldType).getRawType();
-                    setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) rawType);
-                    invokeMethodIfParamNotNull(object, setMethod, to(value, new TypeReference<>(fieldType)));
-                } else {
-                    setMethod = ClassUtil.getMethod(objectClass, setMethodName, (Class<?>) fieldType);
-                    invokeMethodIfParamNotNull(object, setMethod, value);
+            // set方法初始化后，如果没有set方法之际调用set
+            if (Boolean.FALSE.equals(fieldInfo.isNoSetters())) {
+                // 如果存在set方法，则挨个调用
+                List<Method> setters = fieldInfo.setters();
+                Object initValue = null;
+                try {
+                    initValue = field.get(object);
+                } catch (Exception ignored) {
                 }
-                return;
-            } catch (Exception ignored) {
-            }
-
-            //取方法入参类型与值类型相同方法尝试
-            try {
-                setMethod = ClassUtil.getMethod(objectClass, setMethodName, value.getClass());
-                invokeMethodIfParamNotNull(object, setMethod, value);
-                return;
-            } catch (Exception ignored) {
-            }
-
-            //终极解决方式
-            try {
-                for (Method method : list) {
+                for (Method setter : setters) {
                     try {
-                        invokeMethodIfParamNotNull(object, method, value);
-                        return;
+                        invokeMethodIfParamNotNull(object, setter, value);
+                        Object newValue = field.get(object);
+                        if (newValue != null && !newValue.equals(initValue)) {
+                            // 新增设置值方法缓存
+                            fieldInfo.putSetter(setter);
+                            return;
+                        }
                     } catch (Exception ignored) {
                     }
                 }
-            } catch (Exception ignored) {
             }
 
             try {
@@ -539,7 +533,6 @@ public class ObjectUtil extends ObjectUtils {
                 setValueIfNotNull(object, field, value);
             } catch (Exception ignored) {
             }
-
         } else {
             if (!field.getType().isPrimitive()) {
                 try {
@@ -558,16 +551,14 @@ public class ObjectUtil extends ObjectUtils {
      * @param method 方法
      * @param value  值
      */
-    private static void invokeMethodIfParamNotNull(Object object, Method method, Object value) {
-        Class<?>[] parameterTypes = method.getParameterTypes();
+    private static void invokeMethodIfParamNotNull(Object object, Method method, Object value) throws InvocationTargetException, IllegalAccessException {
+        Type[] parameterTypes = method.getGenericParameterTypes();
         if (parameterTypes.length == 1) {
-            Optional.ofNullable(to(value, new TypeReference<>(parameterTypes[0])))
-                    .ifPresent(v -> {
-                        try {
-                            method.invoke(object, v);
-                        } catch (Exception ignored) {
-                        }
-                    });
+            Object v = to(value, new TypeReference<>(parameterTypes[0]));
+            if (value != null && v == null) {
+                throw new RuntimeException();
+            }
+            method.invoke(object, v);
         }
     }
 
@@ -578,14 +569,12 @@ public class ObjectUtil extends ObjectUtils {
      * @param field  属性
      * @param value  值
      */
-    public static void setValueIfNotNull(Object object, Field field, Object value) {
-
-        Optional.ofNullable(to(value, new TypeReference<>(field.getGenericType()))).ifPresent(v -> {
-            try {
-                field.set(object, v);
-            } catch (Exception ignored) {
-            }
-        });
+    public static void setValueIfNotNull(Object object, Field field, Object value) throws IllegalAccessException {
+        Object v = to(value, new TypeReference<>(field.getGenericType()));
+        if (value != null && v == null) {
+            throw new RuntimeException();
+        }
+        field.set(object, v);
     }
 
     /**
@@ -909,22 +898,60 @@ public class ObjectUtil extends ObjectUtils {
         if (field == null) {
             return null;
         }
-        try {
+        final FieldInfo fieldInfo = ClassInfo.getCache(o.getClass()).getFieldInfo(field);
+
+        // 判断get方法是否初始化
+        if (fieldInfo.isNoGetters() == null) {
+            List<Method> methods;
             String getMethodName = "get" + StringUtil.toUpperName(field.getName());
-            Method getMethod = o.getClass().getMethod(getMethodName);
-            if (!getMethod.isAccessible()) {
-                getMethod.setAccessible(true);
+            if (field.getType() == Boolean.TYPE) {
+                String getMethodName2 = "is" + StringUtil.toUpperName(field.getName());
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
+                        (method.getName().equals(getMethodName) || method.getName().equals(getMethodName2)) && method.getParameterCount() == 0)
+                        .map(method -> {
+                            fieldInfo.putGetter(method);
+                            return method;
+                        }).collect(Collectors.toList());
+            } else {
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
+                        method.getName().equals(getMethodName) && method.getParameterCount() == 0)
+                        .map(method -> {
+                            fieldInfo.putGetter(method);
+                            return method;
+                        }).collect(Collectors.toList());
             }
-            return getMethod.invoke(o);
-        } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            try {
-                if (!field.isAccessible()) {
-                    field.setAccessible(true);
+            if (!methods.isEmpty()) {
+                for (Method method : methods) {
+                    try {
+                        Object v = method.invoke(o);
+
+                        //调整getter优先级
+                        fieldInfo.putGetter(method);
+                        return v;
+                    } catch (Exception ignored) {
+                    }
                 }
-                return field.get(o);
-            } catch (IllegalAccessException ex) {
-                return null;
+            } else {
+                fieldInfo.setNoGetters(true);
             }
+        }
+        if (Boolean.FALSE.equals(fieldInfo.isNoGetters())) {
+            List<Method> getters = fieldInfo.getters();
+            for (Method getter : getters) {
+                try {
+                    Object v = getter.invoke(o);
+
+                    //调整getter优先级
+                    fieldInfo.putGetter(getter);
+                    return v;
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        try {
+            return field.get(o);
+        } catch (Exception ignored) {
+            return null;
         }
     }
 

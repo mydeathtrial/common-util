@@ -9,12 +9,12 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.StreamSupport;
 
 import static org.apache.commons.io.FilenameUtils.EXTENSION_SEPARATOR;
 
@@ -34,23 +34,30 @@ public class StringUtil extends StringUtils {
      * @param targets 比对集
      * @return targets中与原字符串相似度最高的字符串
      */
-    public static String vagueMatches(String source, Iterable<String> targets) {
-        String result = StreamSupport.stream(targets.spliterator(),true)
-                .filter(target-> target.equals(source))
+    public static String vagueMatches(String source, Collection<String> targets) {
+        if(targets.contains(source)){
+            return source;
+        }
+
+        String result = targets.parallelStream()
+                .filter(target ->
+                        target.equalsIgnoreCase(source)
+                )
                 .findFirst().orElse(null);
 
         if(result == null){
-            result = StreamSupport.stream(targets.spliterator(),true)
-                    .filter(target->
-                        target.equalsIgnoreCase(source)
-                    )
-                    .findFirst().orElse(null);
-        }
 
-        if(result == null){
-            String camelSource = toCamel(source);
             String underlineSource = toUnderline(source);
-            result = StreamSupport.stream(targets.spliterator(),true)
+            if(targets.contains(underlineSource)){
+                return underlineSource;
+            }
+
+            String camelSource = toCamel(source);
+            if(targets.contains(camelSource)){
+                return camelSource;
+            }
+
+            result = targets.parallelStream()
                     .filter(target->
                       target.equalsIgnoreCase(camelSource) || target.equalsIgnoreCase(underlineSource)
                     )
@@ -60,7 +67,7 @@ public class StringUtil extends StringUtils {
         if(result == null){
             // 根据source构建模糊匹配正则
             String fuzzyMatching = camelToMatchesRegex(source);
-            result = StreamSupport.stream(targets.spliterator(),true)
+            result = targets.parallelStream()
                     .filter(target-> PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE))
                     .findFirst().orElse(null);
         }

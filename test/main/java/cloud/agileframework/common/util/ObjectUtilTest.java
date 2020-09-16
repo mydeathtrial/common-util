@@ -5,6 +5,7 @@ import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.agile.common.data.DemoA;
 import com.agile.common.data.DemoC;
+import com.google.common.collect.Lists;
 import org.junit.Test;
 
 import java.text.SimpleDateFormat;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * @author 佟盟
@@ -28,74 +30,30 @@ public class ObjectUtilTest {
     @Test
     public void objectToMap() {
 
-        long currentTime = System.currentTimeMillis();
-        long start = currentTime;
+
+
         Map<String, Object> data = DemoA.testData();
         DemoA a = ObjectUtil.to(data, new TypeReference<DemoA>() {
         });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
+        long start = System.currentTimeMillis();
+        IntStream.range(0,20).forEach(i->{
+            ObjectUtil.to(data, new TypeReference<DemoA>() {
+            });
         });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);currentTime = System.currentTimeMillis();
-        ObjectUtil.to(data, new TypeReference<DemoA>() {
-        });
-        System.out.println(System.currentTimeMillis()-currentTime);
-        System.out.println(System.currentTimeMillis()-start);
+
+        System.out.println("总耗时："+(System.currentTimeMillis()-start));
+
+//        Object jsona =  JSON.toJavaObject((JSON)JSON.toJSON(data), DemoA.class);
+//        long start2 = System.currentTimeMillis();
+//        IntStream.range(0,2000).forEach(i->{
+//            JSON.toJavaObject((JSON)JSON.toJSON(data), DemoA.class);
+//        });
+//
+//        System.out.println("总耗时："+(System.currentTimeMillis()-start2));
 
         DemoA b = new DemoA();
         ObjectUtil.copyProperties(a,b);
-        System.out.println(System.currentTimeMillis()-currentTime);
+        System.out.println();
     }
 
     /**
@@ -147,5 +105,9 @@ public class ObjectUtilTest {
             add("123");
         }}, new TypeReference<List>() {
         });
+    }
+
+    public static void main(String[] args) {
+        Lists.newArrayList("is","set").stream().sorted((a,b)->b.compareTo(a)).forEach(s-> System.out.println(s));
     }
 }

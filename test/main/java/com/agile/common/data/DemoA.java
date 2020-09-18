@@ -21,17 +21,17 @@ import java.util.TreeSet;
 @Setter
 @Getter
 public class DemoA implements Serializable {
-    private String attr_String1;
+    public String attr_String1;
     private String attrString2;
     private int attrInt;
-    private long attrLong;
     private char attrChar;
     private short attrShort;
     private float attrFloat;
     private double attrDouble;
-    private boolean attrBoolean;
     private byte attrByte;
 
+    public boolean attrBoolean;
+    private long attrLong;
     private Integer attr_int;
     private Long attr_long;
     private Character attr_char;
@@ -40,11 +40,9 @@ public class DemoA implements Serializable {
     private Double attr_double;
     private Boolean attr_boolean;
     private Byte attr_byte;
-
     private Date date;
     private StringBuilder stringBuilder;
     private BigDecimal bigDecimal;
-
     private List<Integer> integerList;
     private List<?> integerLinkedList;
     private Set<Float> floatSet;
@@ -53,7 +51,6 @@ public class DemoA implements Serializable {
     private PriorityQueue<Long> longPriorityQueue;
     private Map<String, Integer> stringIntegerMap;
     private LinkedHashMap<Integer, Integer> integerIntegerLinkedHashMap;
-
     private List<DemoA> demoAList;
     private Map<String, DemoA> stringDemoAMap;
 
@@ -62,7 +59,6 @@ public class DemoA implements Serializable {
     private DemoEnum demoEnum;
 
     private DemoEnum[] demoEnumArray;
-
     public void setAttrLong(long attrLong) {
         this.attrLong = attrLong;
     }
@@ -73,14 +69,13 @@ public class DemoA implements Serializable {
     public void setAttrLong(int attrLong) {
         this.attrLong = attrLong;
     }
+    public void setDemoAList(List<DemoA> demoAList) {
+        this.demoAList = demoAList;
+    }
 
 
     public void setAttrString2(StringBuilder attrString2) {
         this.attrString2 = attrString2.toString();
-    }
-
-    public void setDemoAList(List<DemoA> demoAList) {
-        this.demoAList = demoAList;
     }
 
     public static Map<String, Object> testData() {

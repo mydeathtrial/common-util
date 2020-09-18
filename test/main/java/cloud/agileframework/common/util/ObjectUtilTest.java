@@ -5,12 +5,24 @@ import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.agile.common.data.DemoA;
 import com.agile.common.data.DemoC;
-import com.google.common.collect.Lists;
+import jdk.internal.org.objectweb.asm.ClassReader;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
+import jdk.internal.org.objectweb.asm.Opcodes;
+import jdk.internal.org.objectweb.asm.Type;
+import jdk.internal.org.objectweb.asm.tree.AbstractInsnNode;
+import jdk.internal.org.objectweb.asm.tree.AnnotationNode;
+import jdk.internal.org.objectweb.asm.tree.ClassNode;
+import jdk.internal.org.objectweb.asm.tree.FieldNode;
+import jdk.internal.org.objectweb.asm.tree.LdcInsnNode;
+import jdk.internal.org.objectweb.asm.tree.LocalVariableNode;
+import jdk.internal.org.objectweb.asm.tree.MethodNode;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -43,10 +55,10 @@ public class ObjectUtilTest {
 
         System.out.println("总耗时："+(System.currentTimeMillis()-start));
 
-//        Object jsona =  JSON.toJavaObject((JSON)JSON.toJSON(data), DemoA.class);
+//        Object jsona =   TypeUtils.cast(data,DemoA.class, ParserConfig.getGlobalInstance());
 //        long start2 = System.currentTimeMillis();
-//        IntStream.range(0,2000).forEach(i->{
-//            JSON.toJavaObject((JSON)JSON.toJSON(data), DemoA.class);
+//        IntStream.range(0,1000000).forEach(i->{
+//            TypeUtils.cast(data,DemoA.class, ParserConfig.getGlobalInstance());
 //        });
 //
 //        System.out.println("总耗时："+(System.currentTimeMillis()-start2));
@@ -107,7 +119,84 @@ public class ObjectUtilTest {
         });
     }
 
-    public static void main(String[] args) {
-        Lists.newArrayList("is","set").stream().sorted((a,b)->b.compareTo(a)).forEach(s-> System.out.println(s));
+    public static void main(String[] args) throws IOException {
+//        ClassReader reader = new ClassReader(DemoA.class.getCanonicalName());
+//        ClassNode cn = new ClassNode();
+//        reader.accept(cn, 0);
+//        System.out.println(cn.name);
+//        List<FieldNode> fieldList = cn.fields;
+//        for (FieldNode fieldNode : fieldList) {
+//            System.out.println("Field name: " + fieldNode.name);
+//            System.out.println("Field desc: " + fieldNode.desc);
+//            System.out.println("Filed value: " + fieldNode.value);
+//            System.out.println("Filed access: " + fieldNode.access);
+//        }
+
+        ClassReader reader = new ClassReader(DemoA.class.getCanonicalName());
+        ClassNode cn = new ClassNode();
+        reader.accept(cn, 0);
+        List<MethodNode> methodList = cn.methods;
+        for (MethodNode md : methodList) {
+            System.out.println(md.name);
+            System.out.println(md.access);
+            System.out.println(md.desc);
+            System.out.println(md.signature);
+            List<LocalVariableNode> lvNodeList = md.localVariables;
+            for (LocalVariableNode lvn : lvNodeList) {
+                System.out.println("Local name: " + lvn.name);
+                System.out.println("Local name: " + lvn.start.getLabel());
+                System.out.println("Local name: " + lvn.desc);
+                System.out.println("Local name: " + lvn.signature);
+            }
+            Iterator<AbstractInsnNode> instraIter = md.instructions.iterator();
+            while (instraIter.hasNext()) {
+                AbstractInsnNode abi = instraIter.next();
+                if (abi instanceof LdcInsnNode) {
+                    LdcInsnNode ldcI = (LdcInsnNode) abi;
+                    System.out.println("LDC node value: " + ldcI.cst);
+                }
+            }
+        }
+        MethodVisitor mv = cn.visitMethod(Opcodes.AALOAD, "<init>", Type
+                .getType(String.class).toString(), null, null);
+        mv.visitFieldInsn(Opcodes.GETFIELD, Type.getInternalName(String.class), "str", Type
+                .getType(String.class).toString());
+        System.out.println(cn.name);
+        List<FieldNode> fieldList = cn.fields;
+        for (FieldNode fieldNode : fieldList) {
+            System.out.println("Field name: " + fieldNode.name);
+            System.out.println("Field desc: " + fieldNode.desc);
+            System.out.println("Filed value: " + fieldNode.value);
+            System.out.println("Filed access: " + fieldNode.access);
+            if (fieldNode.visibleAnnotations != null) {
+                for (Object anNode : fieldNode.invisibleAnnotations) {
+                    System.out.println(((AnnotationNode)anNode).desc);
+                }
+            }
+        }
     }
+
+//    public static void main(String[] args) {
+//        boolean flag=true;
+//        int n=0;
+//        Stack stack=new Stack();
+//        Scanner in=new Scanner(System.in);
+//        System.out.println("请输入只包含\"(\",\")\"的字符串！");
+//        String string=in.nextLine();
+//        System.out.println("输入的字符串为:"+string);
+//        char[] s=string.toCharArray();
+//        for(int i=0;i<s.length;i++) {
+//            if(s[i]=='(') {
+//                stack.push(s[i]);
+//            }
+//            else {
+//                if(!stack.isEmpty()) {
+//                    stack.pop();
+//                    n++;
+//                }
+//
+//            }
+//        }
+//        System.out.println("最长有效括号的字串的长度为："+n*2);
+//    }
 }

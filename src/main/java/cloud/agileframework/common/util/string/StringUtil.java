@@ -39,40 +39,25 @@ public class StringUtil extends StringUtils {
             return source;
         }
 
-        String result = targets.parallelStream()
-                .filter(target ->
-                        target.equalsIgnoreCase(source)
-                )
+        String underlineSource = toUnderline(source).toLowerCase();
+        if(targets.contains(underlineSource)){
+            return underlineSource;
+        }
+
+        String camelSource = toCamel(source);
+        if(targets.contains(camelSource)){
+            return camelSource;
+        }
+
+        // 根据source构建模糊匹配正则
+        String fuzzyMatching = camelToMatchesRegex(source);
+
+        return targets.parallelStream()
+                .filter(target-> target.equalsIgnoreCase(source) ||
+                        PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE) ||
+                        target.equalsIgnoreCase(camelSource) ||
+                        target.equalsIgnoreCase(underlineSource))
                 .findFirst().orElse(null);
-
-        if(result == null){
-
-            String underlineSource = toUnderline(source);
-            if(targets.contains(underlineSource)){
-                return underlineSource;
-            }
-
-            String camelSource = toCamel(source);
-            if(targets.contains(camelSource)){
-                return camelSource;
-            }
-
-            result = targets.parallelStream()
-                    .filter(target->
-                      target.equalsIgnoreCase(camelSource) || target.equalsIgnoreCase(underlineSource)
-                    )
-                    .findFirst().orElse(null);
-        }
-
-        if(result == null){
-            // 根据source构建模糊匹配正则
-            String fuzzyMatching = camelToMatchesRegex(source);
-            result = targets.parallelStream()
-                    .filter(target-> PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE))
-                    .findFirst().orElse(null);
-        }
-
-        return result;
     }
 
     /**

@@ -330,29 +330,27 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换后的POJO
      */
     private static <T> T toPOJO(Object from, Class<? extends T> toClass) {
-
-        if (from == null || toClass.isAssignableFrom(from.getClass())) {
-            return (T) from;
-        }
-        final Class<?> sourceClass = from.getClass();
-        if (sourceClass.isPrimitive() || Iterable.class.isAssignableFrom(sourceClass)) {
+        if (from == null) {
             return null;
         }
-        if (ClassUtil.isExtendsFrom(sourceClass, Map.class)) {
+        final Class<?> sourceClass = from.getClass();
+        if (toClass.isAssignableFrom(sourceClass)) {
+            return (T) from;
+        }
+        if (Map.class.isAssignableFrom(sourceClass)) {
             Map<String, Object> map = (Map<String, Object>) from;
 
             T object = ClassUtil.newInstance(toClass);
             if (object != null) {
+
                 ClassUtil.getAllField(toClass)
                         .parallelStream()
                         .forEach(field -> {
-                            String key;
-                            key = StringUtil.vagueMatches(field.getName(), map.keySet());
+                            String key = StringUtil.vagueMatches(field.getName(), map.keySet());
 
                             if (key != null) {
                                 try {
                                     Object value = map.get(key);
-
                                     setValue(object, field, value);
                                 } catch (IllegalArgumentException ignored) {
                                 }
@@ -370,6 +368,8 @@ public class ObjectUtil extends ObjectUtils {
                 }
             } catch (Exception ignored) {
             }
+        } else if (sourceClass.isPrimitive() || Iterable.class.isAssignableFrom(sourceClass)) {
+            return null;
         } else {
             T object = ClassUtil.newInstance(toClass);
             copyProperties(from, object);
@@ -485,16 +485,26 @@ public class ObjectUtil extends ObjectUtils {
     public static void setValue(Object object, Field field, Object value) {
         Class<?> objectClass = object.getClass();
 
+        final Class<?> typeTpye = field.getType();
         if (value != null) {
             FieldInfo fieldInfo = ClassInfo.getCache(objectClass).getFieldInfo(field);
 
             // 如果set方法还未初始化，则开始初始化
             if (fieldInfo.isNoSetters() == null) {
-                String setMethodName = "set" + StringUtil.toUpperName(field.getName());
+                final String fieldName = field.getName();
+                String setMethodName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
 
                 List<Method> list = ClassUtil.getAllMethod(objectClass).stream()
                         .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
-                        .sorted((a, b) -> b.getName().compareTo(a.getName()))
+                        .sorted((a, b) -> {
+                            int result = b.getName().compareTo(a.getName());
+                            if (result == 0) {
+                                int aI = typeTpye == a.getParameterTypes()[0] ? 1 : 0;
+                                int bI = typeTpye == b.getParameterTypes()[0] ? 1 : 0;
+                                result = bI - aI;
+                            }
+                            return result;
+                        })
                         .map(method -> {
                             fieldInfo.putSetter(method);
                             return method;
@@ -534,7 +544,7 @@ public class ObjectUtil extends ObjectUtils {
             } catch (Exception ignored) {
             }
         } else {
-            if (!field.getType().isPrimitive()) {
+            if (!typeTpye.isPrimitive()) {
                 try {
                     field.set(object, null);
                 } catch (Exception ignored) {
@@ -903,7 +913,9 @@ public class ObjectUtil extends ObjectUtils {
         // 判断get方法是否初始化
         if (fieldInfo.isNoGetters() == null) {
             List<Method> methods;
-            String getMethodName = "get" + StringUtil.toUpperName(field.getName());
+
+            final String fieldName = field.getName();
+            String getMethodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
             if (field.getType() == Boolean.TYPE) {
                 String getMethodName2 = "is" + StringUtil.toUpperName(field.getName());
                 methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->

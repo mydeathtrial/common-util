@@ -4,6 +4,7 @@ import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.clazz.ClassInfo;
 import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Field;
@@ -64,7 +65,7 @@ public class TreeUtil {
     }
 
     private static <T> List<T> createChildren(T parentNode, List<T> list, Field keyField, Field parentKeyField, Field childrenKeyField, String sortKey, String splitChar, Set<Field> fullFieldSet) throws IllegalAccessException {
-        List<T> children = new ArrayList<>();
+        List<T> children = Lists.newCopyOnWriteArrayList();
         Object parentNodeKeyValue = keyField.get(parentNode);
 
         Collections.synchronizedCollection(list).parallelStream().forEach(currentNode -> {

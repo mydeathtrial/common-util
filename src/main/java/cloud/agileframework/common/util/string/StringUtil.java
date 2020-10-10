@@ -35,17 +35,17 @@ public class StringUtil extends StringUtils {
      * @return targets中与原字符串相似度最高的字符串
      */
     public static String vagueMatches(String source, Collection<String> targets) {
-        if(targets.contains(source)){
+        if (targets.contains(source)) {
             return source;
         }
 
         String underlineSource = toUnderline(source).toLowerCase();
-        if(targets.contains(underlineSource)){
+        if (targets.contains(underlineSource)) {
             return underlineSource;
         }
 
         String camelSource = toCamel(source);
-        if(targets.contains(camelSource)){
+        if (targets.contains(camelSource)) {
             return camelSource;
         }
 
@@ -53,7 +53,7 @@ public class StringUtil extends StringUtils {
         String fuzzyMatching = camelToMatchesRegex(source);
 
         return targets.parallelStream()
-                .filter(target-> target.equalsIgnoreCase(source) ||
+                .filter(target -> target.equalsIgnoreCase(source) ||
                         PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE) ||
                         target.equalsIgnoreCase(camelSource) ||
                         target.equalsIgnoreCase(underlineSource))
@@ -315,6 +315,21 @@ public class StringUtil extends StringUtils {
     public static String getSplitLastAtomic(String source, String regex) {
         if (source != null) {
             String[] atomics = source.split(regex);
+            if (atomics.length > 0) {
+                return atomics[atomics.length - 1];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 切割字符串成原子数组并取出最后下标下的原子
+     *
+     * @return 原子
+     */
+    public static String getSplitByStrLastAtomic(String source, String regex) {
+        if (source != null) {
+            String[] atomics = StringUtils.split(source, regex);
             if (atomics.length > 0) {
                 return atomics[atomics.length - 1];
             }

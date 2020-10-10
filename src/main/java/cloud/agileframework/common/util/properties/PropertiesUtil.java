@@ -87,6 +87,9 @@ public class PropertiesUtil {
         // 获取启动类
         String className = ((StackTraceElement) ArrayUtil.last(new RuntimeException().getStackTrace())).getClassName();
 
+        // 加载agile系列配置文件
+        readJar("cloud.agileframework.conf");
+
         // 读取jar包配置
         readJar(className.substring(0, className.lastIndexOf(".")));
 

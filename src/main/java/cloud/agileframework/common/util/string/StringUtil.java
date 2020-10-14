@@ -190,7 +190,7 @@ public class StringUtil extends StringUtils {
      * @param replaceNull 代替空参占位
      * @return
      */
-    private static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Object args, String replaceNull) {
+    public static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Object args, String replaceNull) {
         if (args == null) {
             if (replaceNull != null) {
                 args = new HashMap(0);

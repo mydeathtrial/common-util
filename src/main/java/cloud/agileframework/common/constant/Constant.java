@@ -127,12 +127,12 @@ public class Constant {
         public static final String ENGLISH_NUMBER = "^[A-Za-z0-9]+$";
         public static final String MAC = "(([A-Fa-f0-9]{2}:)|([A-Fa-f0-9]{2}-)){5}[A-Fa-f0-9]{2}";
 
-        public static final String ORACLE = "jdbc:oracle:thin:@(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+):(?<name>[\\w]+)";
-        public static final String MYSQL = "jdbc:mysql://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w]+)(?<param>[\\w\\W]*)";
-        public static final String SQL_SERVER = "jdbc:jtds:sqlserver://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w]+)(?<param>[\\w\\W=]+)";
-        public static final String SQL_SERVER2005 = "jdbc:sqlserver://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+);DatabaseName=(?<name>[\\w]+)";
-        public static final String DB2 = "jdbc:db2://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w]+)";
-        public static final String INFORMIX = "jdbc:informix-sqli://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w]+)";
-        public static final String SYBASE = "jdbc:sybase:Tds:(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w]+)";
+        public static final String ORACLE = "jdbc:oracle:thin:@(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+):(?<name>[\\w-]+)";
+        public static final String MYSQL = "jdbc:mysql://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w-]+)(?<param>[\\w\\W]*)";
+        public static final String SQL_SERVER = "jdbc:jtds:sqlserver://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w-]+)(?<param>[\\w\\W=]+)";
+        public static final String SQL_SERVER2005 = "jdbc:sqlserver://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+);DatabaseName=(?<name>[\\w-]+)";
+        public static final String DB2 = "jdbc:db2://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w-]+)";
+        public static final String INFORMIX = "jdbc:informix-sqli://(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w-]+)";
+        public static final String SYBASE = "jdbc:sybase:Tds:(?<ip>[0-9.a-zA-Z-_]+):(?<port>[0-9]+)/(?<name>[\\w-]+)";
     }
 }

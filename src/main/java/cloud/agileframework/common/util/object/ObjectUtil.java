@@ -107,7 +107,11 @@ public class ObjectUtil extends ObjectUtils {
             result = (T) from;
         } else {
             // POJO类型转换
-            result = toPOJO(from, (Class<T>) toClass.getType());
+            try {
+                result = toPOJO(from, (Class<T>) toClass.getType());
+            }catch (Exception e) {
+                result = null;
+            }
 
             if (result == null) {
                 try {

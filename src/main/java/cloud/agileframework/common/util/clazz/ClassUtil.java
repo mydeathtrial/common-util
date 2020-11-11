@@ -123,20 +123,25 @@ public class ClassUtil extends ClassUtils {
                 Method method = Class.class.getDeclaredMethod("privateGetDeclaredConstructors", boolean.class);
                 method.setAccessible(true);
                 Constructor<T>[] constructors = (Constructor<T>[]) method.invoke(clazz, false);
-                if (constructors.length > 0) {
-                    privateConstructor = constructors[0];
-                    privateConstructor.setAccessible(true);
-                    classInfo.setPrivateConstructor(privateConstructor);
+                for (Constructor<T> constructor : constructors) {
+                    constructor.setAccessible(true);
+                    if (constructor.getParameterCount() == 0) {
+                        privateConstructor = constructor;
+                        classInfo.setPrivateConstructor(privateConstructor);
+                    }
                 }
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+            }
+        }
+
+        if (privateConstructor != null) {
+            try {
+                return privateConstructor.newInstance();
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                 return null;
             }
         }
-        try {
-            return privateConstructor.newInstance();
-        } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-            return null;
-        }
+        return null;
     }
 
     /**

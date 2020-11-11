@@ -1,5 +1,7 @@
 package cloud.agileframework.common.util.collection;
 
+import cloud.agileframework.common.util.clazz.ClassInfo;
+
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
@@ -18,13 +20,11 @@ public class CollectionsUtil {
                     return String.valueOf(((Map) o1).get(property)).compareTo(String.valueOf(((Map) o2).get(property)));
                 } else {
                     Class<?> clazz = o1.getClass();
-                    Field field = clazz.getDeclaredField(property);
-                    field.setAccessible(true);
-
+                    Field field = ClassInfo.getCache(clazz).getField(property);
                     return String.valueOf(field.get(o1)).compareTo(String.valueOf(field.get(o2)));
                 }
 
-            } catch (IllegalAccessException | NoSuchFieldException e) {
+            } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
             return 0;

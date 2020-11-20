@@ -14,11 +14,12 @@ import cloud.agileframework.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.lang.annotation.Annotation;
@@ -35,6 +36,7 @@ import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -56,6 +58,10 @@ public class ObjectUtil extends ObjectUtils {
 
     private static final String SERIAL_VERSION_UID = "serialVersionUID";
 
+    public static <T> T to(Object from, TypeReference<T> toClass) {
+        return to(from, toClass, false);
+    }
+
     /**
      * 对象深度转换工具
      * <p>
@@ -71,10 +77,11 @@ public class ObjectUtil extends ObjectUtils {
      *
      * @param from    被转换对象
      * @param toClass 转换后的对象类型，利用匿名内部类方式传递该类型，以解决容器类泛型类解析问题
+     * @param alias   是否启用Alias注解解析
      * @param <T>     转换后的对象类型泛型
      * @return 转换后的toClass类型对象
      */
-    public static <T> T to(Object from, TypeReference<T> toClass) {
+    public static <T> T to(Object from, TypeReference<T> toClass, boolean alias) {
         T result;
         if (from == null) {
             return null;
@@ -108,8 +115,8 @@ public class ObjectUtil extends ObjectUtils {
         } else {
             // POJO类型转换
             try {
-                result = toPOJO(from, (Class<T>) toClass.getType());
-            }catch (Exception e) {
+                result = toPOJO(from, (Class<T>) toClass.getType(), alias);
+            } catch (Exception e) {
                 result = null;
             }
 
@@ -333,7 +340,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param <T>     泛型
      * @return 转换后的POJO
      */
-    private static <T> T toPOJO(Object from, Class<? extends T> toClass) {
+    private static <T> T toPOJO(Object from, Class<? extends T> toClass, boolean alias) {
         if (from == null) {
             return null;
         }
@@ -368,7 +375,7 @@ public class ObjectUtil extends ObjectUtils {
             try {
                 Object json = JSON.parse((String) from);
                 if (json instanceof JSON) {
-                    return toPOJO(json, toClass);
+                    return toPOJO(json, toClass, alias);
                 }
             } catch (Exception ignored) {
             }
@@ -376,7 +383,7 @@ public class ObjectUtil extends ObjectUtils {
             return null;
         } else {
             T object = ClassUtil.newInstance(toClass);
-            copyProperties(from, object);
+            copyProperties(from, object, alias);
             if (!isNotChange(object)) {
                 return object;
             }
@@ -666,8 +673,7 @@ public class ObjectUtil extends ObjectUtils {
      *                DIFF_TARGET_NOT_NULL:target属性值不空的,并且值不相同的
      */
     public static void copyProperties(Object source, Object target, Compare compare) {
-        Set<String> fields = getSameField(source, target, compare);
-        copyProperties(source, target, fields.toArray(new String[]{}), ContainOrExclude.INCLUDE);
+        copyProperties(source, target, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK, new String[]{}, ContainOrExclude.EXCLUDE, compare, false);
     }
 
     /**
@@ -678,113 +684,230 @@ public class ObjectUtil extends ObjectUtils {
      * @param compare 比对方式
      * @return 属性名集合
      */
-    private static Set<String> getSameField(Object source, Object target, Compare compare) {
-        Set<String> result = new HashSet<>();
+    private static Map<Field, Set<Field>> getSameField(Object source, Object target, String prefix, String suffix, Compare compare, boolean isAlias) {
+        Map<Field, Set<Field>> result = Maps.newConcurrentMap();
         if (ObjectUtils.isEmpty(source) || ObjectUtils.isEmpty(target)) {
             return result;
         }
-        Set<String> sameField = getSameField(source, target);
-        if (sameField.isEmpty()) {
-            return result;
+        if (isAlias) {
+            result = getSameFieldByAlias(source.getClass(), target.getClass(), prefix, suffix);
+        } else {
+            result = getSameFieldByBlurry(source.getClass(), target.getClass(), prefix, suffix);
         }
 
+        if (result.isEmpty()) {
+            return result;
+        }
+        //根据比较规则，过滤字段映射情况
+        parseCompare(source, target, compare, result);
+        return result;
+    }
+
+    /**
+     * 处理Compare，更具Compare比较规则，提取字段映射
+     *
+     * @param source  从对象
+     * @param target  到对象
+     * @param compare 比较规则
+     * @param result  字段映射情况，key为从对象字段，value为到对象字段集合
+     */
+    private static void parseCompare(Object source, Object target, Compare compare, Map<Field, Set<Field>> result) {
         Object targetNew = null;
         try {
             targetNew = target.getClass().newInstance();
         } catch (Exception ignored) {
 
         }
-        for (String fieldName : sameField) {
-            Object sourceValue = getFieldValue(source, fieldName);
-            Object targetValue = getFieldValue(target, fieldName);
-            switch (compare) {
-                case DIFF_ALL_NOT_NULL:
-                    if (sourceValue != null && targetValue != null && (!sourceValue.equals(targetValue))) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_TARGET_NULL:
-                    if (sourceValue != null && targetValue == null) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_SOURCE_NULL:
-                    if (sourceValue == null && targetValue != null) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_SOURCE_NOT_NULL:
-                    if (sourceValue != null && !sourceValue.equals(targetValue)) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_TARGET_NOT_NULL:
-                    if (targetValue != null && !targetValue.equals(sourceValue)) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_SOURCE_NOT_NULL_AND_TARGET_DEFAULT:
-                    if (targetNew == null) {
-                        throw new RuntimeException(String.format("目标对象创建失败，请检查类“%s”是否包含空参构造函数", target.getClass()));
-                    } else if (sourceValue != null && targetValue == null) {
-                        result.add(fieldName);
-                    } else if (sourceValue != null && !sourceValue.equals(targetValue) && targetValue.equals(getFieldValue(targetNew, fieldName))) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF_TARGET_DEFAULT:
-                    if (targetNew == null) {
-                        throw new RuntimeException(String.format("目标对象创建失败，请检查类“%s”是否包含空参构造函数", target.getClass()));
-                    } else if (targetValue != null && targetValue.equals(getFieldValue(targetNew, fieldName)) && targetValue.equals(sourceValue)) {
-                        result.add(fieldName);
-                    } else if (targetValue == null && getFieldValue(targetNew, fieldName) == null && sourceValue != null) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case DIFF:
-                    boolean is = (sourceValue == null && targetValue != null) ||
-                            (sourceValue != null && targetValue == null) ||
-                            (sourceValue != null && !source.equals(targetValue));
-                    if (is) {
-                        result.add(fieldName);
-                    }
-                    break;
-                case SAME:
-                    if (sourceValue != null && (sourceValue.equals(targetValue))) {
-                        result.add(fieldName);
-                    }
-                    break;
-                default:
+
+        Object finalTargetNew = targetNew;
+        result.entrySet().parallelStream().forEach(e -> {
+            Field fromField = e.getKey();
+            Set<Field> toFields = e.getValue();
+
+            Iterator<Field> it = toFields.iterator();
+            while (it.hasNext()) {
+                Field toField = it.next();
+
+                Object sourceValue = getFieldValue(source, fromField);
+                Object targetValue = getFieldValue(target, toField);
+                switch (compare) {
+                    case DIFF_ALL_NOT_NULL:
+                        if (sourceValue != null && targetValue != null && !equals(sourceValue, targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_TARGET_NULL:
+                        if (sourceValue != null && targetValue == null) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_SOURCE_NULL:
+                        if (sourceValue == null && targetValue != null) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_SOURCE_NOT_NULL:
+                        if (sourceValue != null && !equals(sourceValue, targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_TARGET_NOT_NULL:
+                        if (targetValue != null && !equals(sourceValue, targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_SOURCE_NOT_NULL_AND_TARGET_DEFAULT:
+                        if (finalTargetNew == null) {
+                            throw new RuntimeException(String.format("目标对象创建失败，请检查类“%s”是否包含空参构造函数", target.getClass()));
+                        } else if (sourceValue != null && !equals(sourceValue, targetValue) && equals(getFieldValue(finalTargetNew, toField), targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case DIFF_TARGET_DEFAULT:
+                        if (finalTargetNew == null) {
+                            throw new RuntimeException(String.format("目标对象创建失败，请检查类“%s”是否包含空参构造函数", target.getClass()));
+                        } else if (!equals(sourceValue, targetValue) && equals(getFieldValue(finalTargetNew, toField), targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case DIFF:
+                        if (!equals(sourceValue, targetValue)) {
+                            continue;
+                        }
+                        break;
+                    case SAME:
+                        if (equals(sourceValue, targetValue)) {
+                            continue;
+                        }
+                        break;
+                    default:
+                }
+                it.remove();
             }
-        }
-        return result;
+
+        });
     }
 
     /**
-     * 获取同名属性
+     * 判断俩对象是否相等
      *
-     * @param source 比较对象
-     * @param target 比较对象
+     * @param object1 对象一
+     * @param object2 对象二
+     * @return 是否
+     */
+    public static boolean equals(Object object1, Object object2) {
+        if (object1 == object2) {
+            return true;
+        } else {
+            return object1 != null && object1.equals(object2);
+        }
+    }
+
+    public static Map<Field, Set<Field>> getSameFieldByBlurry(Class<?> sourceClass, Class<?> targetClass) {
+        return getSameFieldByBlurry(sourceClass, targetClass, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK);
+    }
+
+    /**
+     * 模糊匹配方式匹配，提取两个类型属性之间得映射关系
+     *
+     * @param sourceClass 比较对象
+     * @param targetClass 比较对象
+     * @param prefix      只处理属性前缀为prefix的属性
+     * @param suffix      只处理属性后缀为suffix的属性
      * @return 同名属性集合
      */
-    private static Set<String> getSameField(Object source, Object target) {
-        Class<?> sourceClass = source.getClass();
-        Class<?> targetClass = target.getClass();
-        Set<String> result = new HashSet<>();
+    public static Map<Field, Set<Field>> getSameFieldByBlurry(Class<?> sourceClass, Class<?> targetClass, String prefix, String suffix) {
+        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
+            return null;
+        }
+        assert prefix != null;
+        assert suffix != null;
+
+        Map<Field, Set<Field>> result = Maps.newConcurrentMap();
         if (sourceClass == targetClass) {
             ClassUtil.getAllField(sourceClass)
                     .parallelStream()
-                    .forEach(field -> result.add(field.getName()));
+                    .filter(field -> field.getName().startsWith(prefix) && field.getName().endsWith(prefix))
+                    .forEach(field -> result.put(field, Sets.newHashSet(field)));
         } else {
-            ClassUtil.getAllField(sourceClass).parallelStream().forEach(field -> {
-                String name = field.getName();
-                Field targetField = ClassUtil.getField(targetClass, name);
-                if (targetField != null) {
-                    result.add(name);
+            ClassUtil.getAllField(targetClass).parallelStream().forEach(toField -> {
+                String name = toField.getName();
+
+                Field fromField = ClassUtil.getField(sourceClass, name);
+                if (fromField != null && fromField.getName().startsWith(prefix) && fromField.getName().endsWith(suffix)) {
+                    Set<Field> set = result.get(fromField);
+                    if (set == null) {
+                        set = Sets.newHashSet();
+                    }
+                    set.add(toField);
+                    result.put(fromField, set);
                 }
             });
         }
         return result;
+    }
+
+    public static Map<Field, Set<Field>> getSameFieldByAlias(Class<?> sourceClass, Class<?> targetClass) {
+        return getSameFieldByAlias(sourceClass, targetClass, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK);
+    }
+
+    /**
+     * 根据别名、属性名，提取两个类型属性映射关系
+     *
+     * @param sourceClass 从
+     * @param targetClass 到
+     * @param prefix      只处理属性前缀为prefix的属性
+     * @param suffix      只处理属性后缀为suffix的属性
+     * @return 属性映射关系
+     */
+    public static Map<Field, Set<Field>> getSameFieldByAlias(Class<?> sourceClass, Class<?> targetClass, String prefix, String suffix) {
+        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
+            return null;
+        }
+        assert prefix != null;
+        assert suffix != null;
+
+        Map<Field, Set<Field>> map = Maps.newConcurrentMap();
+        Map<Field, Set<String>> sourceMap = parseFieldAlias(sourceClass);
+        Map<Field, Set<String>> targetMap = parseFieldAlias(targetClass);
+
+        sourceMap.entrySet().parallelStream().filter(e -> {
+            final String name = e.getKey().getName();
+            return name.startsWith(prefix) && name.endsWith(suffix);
+        }).forEach(e -> {
+            Set<String> sourceAlias = e.getValue();
+            Set<Field> set = targetMap.entrySet().stream().filter(te ->
+                    !CollectionUtils.retainAll(te.getValue(), sourceAlias).isEmpty()
+            ).map(Map.Entry::getKey).collect(Collectors.toSet());
+            map.put(e.getKey(), set);
+        });
+
+        return map;
+    }
+
+    /**
+     * 整理类属性的别名
+     *
+     * @param sourceClass 将被整理的类
+     * @return
+     */
+    public static Map<Field, Set<String>> parseFieldAlias(Class<?> sourceClass) {
+        Map<Field, Set<String>> sourceMap = Maps.newConcurrentMap();
+        Set<ClassUtil.Target<Alias>> sourceAnnotations = ClassUtil.getAllEntityAnnotation(sourceClass, Alias.class);
+
+        ClassUtil.getAllField(sourceClass).forEach(field -> {
+            ClassUtil.Target<Alias> an = sourceAnnotations.stream().filter(sourceAnnotation -> sourceAnnotation.getMember() == field).findFirst().orElse(null);
+            Set<String> aliases;
+            if (an != null) {
+                aliases = Sets.newHashSet(an.getAnnotation().value());
+                aliases.add(field.getName());
+            } else {
+                aliases = Sets.newHashSet(field.getName());
+            }
+
+            sourceMap.put(field, aliases);
+        });
+        return sourceMap;
     }
 
     /**
@@ -796,7 +919,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param containOrExclude INCLUDE时，则拷贝arguments中的属性；EXCLUDE时，则拷贝arguments以外的属性。
      */
     public static void copyProperties(Object source, Object target, String[] arguments, ContainOrExclude containOrExclude) {
-        copyProperties(source, target, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK, arguments, containOrExclude);
+        copyProperties(source, target, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK, arguments, containOrExclude, Compare.DIFF, false);
     }
 
     /**
@@ -808,7 +931,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param suffix 要拷贝属性的后缀，仅拷贝符合该后缀的属性
      */
     public static void copyProperties(Object source, Object target, String prefix, String suffix) {
-        copyProperties(source, target, prefix, suffix, new String[]{}, ContainOrExclude.INCLUDE);
+        copyProperties(source, target, prefix, suffix, new String[]{}, ContainOrExclude.EXCLUDE, Compare.DIFF, false);
     }
 
     /**
@@ -819,7 +942,20 @@ public class ObjectUtil extends ObjectUtils {
      * @param target 新对象
      */
     public static void copyProperties(Object source, Object target) {
-        copyProperties(source, target, Compare.DIFF);
+        copyProperties(source, target, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK, new String[]{}, ContainOrExclude.EXCLUDE, Compare.DIFF, false);
+
+    }
+
+    /**
+     * 复制对象属性
+     * 仅拷贝属性值不相同属性
+     *
+     * @param source 原对象
+     * @param target 新对象
+     * @param alias  是否识别别名注解@Alias
+     */
+    public static void copyProperties(Object source, Object target, boolean alias) {
+        copyProperties(source, target, Constant.RegularAbout.BLANK, Constant.RegularAbout.BLANK, new String[]{}, ContainOrExclude.EXCLUDE, Compare.DIFF, alias);
     }
 
     /**
@@ -832,51 +968,43 @@ public class ObjectUtil extends ObjectUtils {
      * @param arguments        属性列表
      * @param containOrExclude 包含或排除
      */
-    public static void copyProperties(Object source, Object target, String prefix, String suffix, String[] arguments, ContainOrExclude containOrExclude) {
+    public static void copyProperties(Object source, Object target, String prefix, String suffix, String[] arguments, ContainOrExclude containOrExclude, Compare compare, boolean isAlias) {
         if (ObjectUtils.isEmpty(source) || ObjectUtils.isEmpty(target)) {
             return;
         }
 
-        ClassUtil.getAllField(target.getClass())
+        Map<Field, Set<Field>> argumentsMap = getSameField(source, target, prefix, suffix, compare, isAlias);
+        argumentsMap.entrySet()
                 .parallelStream()
-                .forEach(field -> {
-                    String propertyName = field.getName();
-
-                    propertyName = StringUtils.isBlank(prefix) ? propertyName : prefix + StringUtil.toUpperName(propertyName);
-                    propertyName = StringUtils.isBlank(suffix) ? propertyName : propertyName + StringUtil.toUpperName(suffix);
-
-                    Field sourceProperty = ClassUtil.getField(source.getClass(), propertyName);
-                    if (sourceProperty == null) {
-                        return;
-                    }
-                    if (arguments == null) {
-                        return;
-                    }
-
-                    switch (containOrExclude) {
-                        case EXCLUDE:
-                            if (ArrayUtils.contains(arguments, sourceProperty.getName())) {
-                                return;
-                            }
-                            break;
-                        case INCLUDE:
-                            if (!ArrayUtils.contains(arguments, sourceProperty.getName())) {
-                                return;
-                            }
-                            break;
-                        default:
-                    }
-
+                .forEach(e -> {
                     try {
-                        Object value = sourceProperty.get(source);
+                        final Field fromField = e.getKey();
 
-                        if (value != null) {
-                            Type type = field.getGenericType();
-                            TypeReference<Object> typeReference = new TypeReference<>(type);
-                            value = to(value, typeReference);
+                        switch (containOrExclude) {
+                            case EXCLUDE:
+                                if (ArrayUtils.contains(arguments, fromField.getName())) {
+                                    return;
+                                }
+                                break;
+                            case INCLUDE:
+                                if (!ArrayUtils.contains(arguments, fromField.getName())) {
+                                    return;
+                                }
+                                break;
+                            default:
                         }
 
-                        setValue(target, field, value);
+                        Object value = fromField.get(source);
+
+                        Set<Field> toFields = e.getValue();
+                        for (Field toField : toFields) {
+                            Type type = toField.getGenericType();
+                            TypeReference<Object> typeReference = new TypeReference<>(type);
+                            if (value != null) {
+                                value = to(value, typeReference);
+                            }
+                            setValue(target, toField, value);
+                        }
 
                     } catch (Exception ignored) {
 

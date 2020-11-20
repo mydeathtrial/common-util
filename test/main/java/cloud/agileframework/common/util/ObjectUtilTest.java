@@ -5,6 +5,8 @@ import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.agile.common.data.DemoA;
 import com.agile.common.data.DemoC;
+import com.agile.common.data.DemoD;
+import com.agile.common.data.DemoE;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
@@ -19,12 +21,14 @@ import jdk.internal.org.objectweb.asm.tree.MethodNode;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 /**
@@ -199,4 +203,18 @@ public class ObjectUtilTest {
 //        }
 //        System.out.println("最长有效括号的字串的长度为："+n*2);
 //    }
+
+    @Test
+    public void getAliasInfo(){
+        Map<Field, Set<Field>> s = ObjectUtil.getSameFieldByAlias(DemoD.class, DemoE.class,"","");
+        System.out.println(s);
+    }
+
+
+    @Test
+    public void copyByAlias(){
+        DemoE e = new DemoE();
+        ObjectUtil.copyProperties(DemoD.builder().paramA("2").paramB(10).build(),e,true);
+        System.out.println(e);
+    }
 }

@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
  * @version 1.0
  * @since 1.0
  */
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.METHOD, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Alias {

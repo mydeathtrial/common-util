@@ -1,3 +1,4 @@
+
 package cloud.agileframework.common.util.http;
 
 import cloud.agileframework.common.constant.Constant;
@@ -18,6 +19,7 @@ import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -185,9 +187,9 @@ public class HttpUtil {
      * @param param    参数
      * @return 相应信息
      */
-    public static CloseableHttpResponse originalSend(Protocol protocol, RequestMethod method, String url, Object header, Object param) {
+    public static CloseableHttpResponse originalSend(Protocol protocol, String var0, RequestMethod method, String url, Object header, Object param) {
         try {
-            CloseableHttpClient httpClient = getHttpClient(protocol);
+            CloseableHttpClient httpClient = getHttpClient(protocol, var0);
 
             HttpRequestBase httpRequestBase = getHttpRequestBase(method);
 
@@ -201,12 +203,16 @@ public class HttpUtil {
 
             return httpClient.execute(httpRequestBase);
 
-        }catch (NotFoundRequestMethodException e){
+        } catch (NotFoundRequestMethodException e) {
             logger.error("第二个参数 method 未成功分析出请求方式", e);
-        }catch (Exception e) {
+        } catch (Exception e) {
             logger.error("请求失败", e);
         }
         return null;
+    }
+
+    public static String send(Protocol protocol, RequestMethod method, String url, Object header, Object param) {
+        return send(protocol, SSLConnectionSocketFactory.SSL, method, url, header, param);
     }
 
     /**
@@ -219,8 +225,8 @@ public class HttpUtil {
      * @param param    参数
      * @return 相应信息
      */
-    public static String send(Protocol protocol, RequestMethod method, String url, Object header, Object param) {
-        try (CloseableHttpResponse response = originalSend(protocol, method, url, header, param)) {
+    public static String send(Protocol protocol, String var0, RequestMethod method, String url, Object header, Object param) {
+        try (CloseableHttpResponse response = originalSend(protocol, var0, method, url, header, param)) {
             return toStringContent(response);
         } catch (Exception e) {
             logger.error("请求失败", e);
@@ -331,10 +337,10 @@ public class HttpUtil {
      * @throws KeyManagementException   异常
      * @throws NoSuchAlgorithmException 异常
      */
-    private static CloseableHttpClient getHttpClient(Protocol protocol) throws KeyManagementException, NoSuchAlgorithmException {
+    private static CloseableHttpClient getHttpClient(Protocol protocol, String var0) throws KeyManagementException, NoSuchAlgorithmException {
         CloseableHttpClient httpClient;
         if (protocol == Protocol.Https) {
-            httpClient = getHttpsClient();
+            httpClient = getHttpsClient(var0);
         } else {
             httpClient = HttpClients.createDefault();
         }
@@ -348,11 +354,11 @@ public class HttpUtil {
      * @throws KeyManagementException   异常
      * @throws NoSuchAlgorithmException 异常
      */
-    public static CloseableHttpClient getHttpsClient() throws KeyManagementException, NoSuchAlgorithmException {
+    public static CloseableHttpClient getHttpsClient(String var0) throws KeyManagementException, NoSuchAlgorithmException {
         // 设置协议http和https对应的处理socket链接工厂的对象
         Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
                 .register("http", PlainConnectionSocketFactory.INSTANCE)
-                .register("https", new SSLConnectionSocketFactory(createIgnoreVerifySSL()))
+                .register("https", new SSLConnectionSocketFactory(createIgnoreVerifySSL(var0), NoopHostnameVerifier.INSTANCE))
                 .build();
         PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
         HttpClients.custom().setConnectionManager(connManager);
@@ -366,8 +372,8 @@ public class HttpUtil {
      * @throws KeyManagementException   异常
      * @throws NoSuchAlgorithmException 异常
      */
-    public static SSLContext createIgnoreVerifySSL() throws KeyManagementException, NoSuchAlgorithmException {
-        SSLContext sslContext = SSLContext.getInstance("TLS");
+    public static SSLContext createIgnoreVerifySSL(String var0) throws KeyManagementException, NoSuchAlgorithmException {
+        SSLContext sslContext = SSLContext.getInstance(var0);
         X509TrustManager trustManager = new X509TrustManager() {
             //该方法检查客户端的证书，若不信任该证书则抛出异常。由于我们不需要对客户端进行认证，
             //因此我们只需要执行默认的信任管理器的这个方法。JSSE中，默认的信任管理器类为TrustManager。

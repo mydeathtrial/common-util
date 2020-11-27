@@ -73,6 +73,7 @@ public class POIUtil {
         //创建字段头
         List<Cell> headerColumns = sheetData.getCells();
 
+        final List<?> data = sheetData.getData();
         if (!CollectionUtils.isEmpty(headerColumns)) {
             //对excel表头进行排序
             CollectionsUtil.sort(headerColumns, sortFieldName);
@@ -81,14 +82,18 @@ public class POIUtil {
             createRow(sheet, headerColumns, currentRowIndex++, headerColumns);
 
             //逐行创建表数据
-            Iterator it = sheetData.getData().iterator();
-            while (it.hasNext()) {
-                createRow(sheet, it.next(), currentRowIndex++, headerColumns);
+            if(data==null){
+                return;
+            }
+            for (Object datum : data) {
+                createRow(sheet, datum, currentRowIndex++, headerColumns);
             }
         } else {
-            Iterator it = sheetData.getData().iterator();
-            while (it.hasNext()) {
-                createRow(sheet, it.next(), currentRowIndex++);
+            if(data==null){
+                return;
+            }
+            for (Object datum : data) {
+                createRow(sheet, datum, currentRowIndex++);
             }
         }
     }

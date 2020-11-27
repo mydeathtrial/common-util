@@ -3,7 +3,9 @@ package cloud.agileframework.common.util.file;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.file.poi.ExcelFile;
 import cloud.agileframework.common.util.string.StringUtil;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
+import sun.misc.BASE64Encoder;
 
 import javax.activation.MimetypesFileTypeMap;
 import javax.servlet.http.HttpServletRequest;
@@ -161,7 +163,7 @@ public class FileUtil extends FileUtils {
     private static void setContentDisposition(String fileName, HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException {
         String contentDisposition;
         if (request.getHeader("User-Agent").toLowerCase().indexOf("firefox") > 0) {
-            contentDisposition = String.format("attachment; filename=\"%s\"", new String(fileName.getBytes(StandardCharsets.UTF_8), Charset.forName("ISO8859-1")));
+            contentDisposition = String.format("attachment; filename=\"%s\"", "=?UTF-8?B?" + (new String(Base64.encodeBase64(fileName.getBytes("UTF-8")))) + "?=");
         } else {
             contentDisposition = String.format("attachment; filename=\"%s\"", URLEncoder.encode(fileName, "UTF-8"));
         }

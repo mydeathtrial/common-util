@@ -4,8 +4,6 @@ import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.http.HttpUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.Method;
 import com.agile.common.data.DemoA;
 import com.agile.common.data.DemoC;
 import com.agile.common.data.DemoD;
@@ -229,17 +227,6 @@ public class ObjectUtilTest {
         map.put("Content-type","application/json");
 //        map.put("token","ODULjdxyL99dzcSfcJ6zxNHGzivsaGAUC6i4Xt_7tT5P0bqf4Fa6gCizIhNrmxLh3wtjYFba3rfdi7I7Rvg3vg");
         String a = HttpUtil.post("https://192.168.50.174:18081/api/holmes/scanFile", map,null);
-        System.out.println(a);
-    }
-
-    @Test
-    public void https2(){
-        String a = new HttpRequest("https://192.168.50.174:18081/api/holmes/scanFile")
-                .method(Method.POST)
-                .post("https://192.168.50.174:18081/api/holmes/scanFile")
-                .body("{}")
-                .header("token", "ODULjdxyL99dzcSfcJ6zxNHGzivsaGAUC6i4Xt_7tT5P0bqf4Fa6gCizIhNrmxLh3wtjYFba3rfdi7I7Rvg3vg")
-                .timeout(5000).execute().body();
         System.out.println(a);
     }
 }

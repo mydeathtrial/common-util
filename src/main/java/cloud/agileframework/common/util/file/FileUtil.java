@@ -5,9 +5,9 @@ import cloud.agileframework.common.util.file.poi.ExcelFile;
 import cloud.agileframework.common.util.string.StringUtil;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
-import sun.misc.BASE64Encoder;
 
 import javax.activation.MimetypesFileTypeMap;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedWriter;
@@ -24,8 +24,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +147,9 @@ public class FileUtil extends FileUtils {
         setContentLength(stream, response);
         setContentDisposition(fileName, request, response);
         response.setContentType(contentType == null ? "application/octet-stream" : contentType);
+        ServletOutputStream outputStream = response.getOutputStream();
         inWriteOut(stream, response.getOutputStream());
+        outputStream.close();
     }
 
     public static void downloadFile(String fileName, String contentType, File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -219,6 +219,7 @@ public class FileUtil extends FileUtils {
             FileInputStream in = new FileInputStream(zip);
             inWriteOut(in, out);
             downloadFile("download.zip", "application/octet-stream", new ByteArrayInputStream(out.toByteArray()), request, response);
+            out.close();
             boolean isDelete = zip.delete();
             if (!isDelete) {
                 throw new RuntimeException("zip cache delete fail");
@@ -247,8 +248,6 @@ public class FileUtil extends FileUtils {
     public static void createZipFile(List<?> fileList, OutputStream outputStream) throws IOException {
         ZipOutputStream out = new ZipOutputStream(outputStream);
         zipFile(fileList, out);
-        out.flush();
-        out.close();
     }
 
     public static void zipFile(List<?> fileList, ZipOutputStream out) throws IOException {
@@ -278,6 +277,8 @@ public class FileUtil extends FileUtils {
                 }
             }
         }
+        out.flush();
+        out.close();
     }
 
     public static void inWriteOut(InputStream inputStream, OutputStream outputStream) throws IOException {
@@ -289,7 +290,6 @@ public class FileUtil extends FileUtils {
         }
         inputStream.close();
         outputStream.flush();
-        outputStream.close();
     }
 
     public static boolean isFile(Object value) {

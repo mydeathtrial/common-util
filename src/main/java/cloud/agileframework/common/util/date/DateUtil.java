@@ -1,5 +1,6 @@
 package cloud.agileframework.common.util.date;
 
+import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.pattern.PatternUtil;
 import org.apache.commons.lang3.ObjectUtils;
 
@@ -41,12 +42,12 @@ public class DateUtil {
     /**
      * 简单日期正则
      */
-    private static final String DATE_SIMPLE_REGEX = "(?<year0>([0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]{1}|[0-9]{1}[1-9][0-9]{2}|[1-9][0-9]{3}))(?<split1>[年|/|-]+)(((?<month0>(1[012]|0?[1-9])))?)(?<split2>[月|/|-]+)(((?<date0>([12][0-9]|3[01]|0?[1-9])))?)";
+    private static final String DATE_SIMPLE_REGEX = "(?<year0>([0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]{1}|[0-9]{1}[1-9][0-9]{2}|[1-9][0-9]{3}))(?<split1>[年|/|-| ]+)(((?<month0>(1[012]|0?[1-9])))?)(?<split2>[月|/|-| ]+)(((?<date0>([12][0-9]|3[01]|0?[1-9])))?)";
 
     /**
-     * 时间戳正则
+     * 毫秒时间戳正则
      */
-    private static final String TIME_MILLIS_FORMAT = "(1[\\d]{12})|([\\d]{9,12})";
+    private static final String TIME_MILLIS_FORMAT = "-?[\\d]*";
 
     /**
      * 下午标识
@@ -200,6 +201,10 @@ public class DateUtil {
             GregorianCalendar gregorianCalendar = new GregorianCalendar();
             gregorianCalendar.set(Calendar.MONTH, 0);
             gregorianCalendar.set(Calendar.DATE, 1);
+            gregorianCalendar.set(Calendar.HOUR_OF_DAY, 0);
+            gregorianCalendar.set(Calendar.MINUTE, 0);
+            gregorianCalendar.set(Calendar.SECOND, 0);
+            gregorianCalendar.set(Calendar.MILLISECOND, 0);
             Stream<Map.Entry<String, String>> stream = list.entrySet().stream().filter(e -> e.getValue() != null);
 
             stream.forEach(e -> {

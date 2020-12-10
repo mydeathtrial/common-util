@@ -16,7 +16,7 @@ public class IDUtil {
         return getSnowflakeIdWorker().nextId();
     }
 
-    public static SnowflakeIdWorker getSnowflakeIdWorker() {
+    public static synchronized SnowflakeIdWorker getSnowflakeIdWorker() {
 
         if (snowflakeIdWorker == null) {
             snowflakeIdWorker = new SnowflakeIdWorker(Constant.NumberAbout.ONE, Constant.NumberAbout.ONE);

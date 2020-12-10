@@ -720,14 +720,15 @@ public class ObjectUtil extends ObjectUtils {
         }
 
         Object finalTargetNew = targetNew;
-        result.entrySet().parallelStream().forEach(e -> {
+        Iterator<Map.Entry<Field, Set<Field>>> resultIt = result.entrySet().iterator();
+        while (resultIt.hasNext()) {
+            Map.Entry<Field, Set<Field>> e = resultIt.next();
+
             Field fromField = e.getKey();
             Set<Field> toFields = e.getValue();
 
-            Iterator<Field> it = toFields.iterator();
-            while (it.hasNext()) {
-                Field toField = it.next();
-
+            boolean is = false;
+            for (Field toField : toFields) {
                 Object sourceValue = getFieldValue(source, fromField);
                 Object targetValue = getFieldValue(target, toField);
                 switch (compare) {
@@ -782,10 +783,13 @@ public class ObjectUtil extends ObjectUtils {
                         break;
                     default:
                 }
-                it.remove();
+                is = true;
+            }
+            if (is) {
+                resultIt.remove();
             }
 
-        });
+        }
     }
 
     /**
@@ -817,24 +821,25 @@ public class ObjectUtil extends ObjectUtils {
      * @return 同名属性集合
      */
     public static Map<Field, Set<Field>> getSameFieldByBlurry(Class<?> sourceClass, Class<?> targetClass, String prefix, String suffix) {
-        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
-            return null;
-        }
-        assert prefix != null;
-        assert suffix != null;
-
         Map<Field, Set<Field>> result = Maps.newConcurrentMap();
+        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
+            return result;
+        }
+        String finalPrefix = prefix == null ? "" : prefix;
+        String finalSuffix = suffix == null ? "" : suffix;
+
+
         if (sourceClass == targetClass) {
             ClassUtil.getAllField(sourceClass)
                     .parallelStream()
-                    .filter(field -> field.getName().startsWith(prefix) && field.getName().endsWith(prefix))
+                    .filter(field -> field.getName().startsWith(finalPrefix) && field.getName().endsWith(finalPrefix))
                     .forEach(field -> result.put(field, Sets.newHashSet(field)));
         } else {
             ClassUtil.getAllField(targetClass).parallelStream().forEach(toField -> {
                 String name = toField.getName();
 
                 Field fromField = ClassUtil.getField(sourceClass, name);
-                if (fromField != null && fromField.getName().startsWith(prefix) && fromField.getName().endsWith(suffix)) {
+                if (fromField != null && fromField.getName().startsWith(finalPrefix) && fromField.getName().endsWith(finalSuffix)) {
                     Set<Field> set = result.get(fromField);
                     if (set == null) {
                         set = Sets.newHashSet();
@@ -861,19 +866,20 @@ public class ObjectUtil extends ObjectUtils {
      * @return 属性映射关系
      */
     public static Map<Field, Set<Field>> getSameFieldByAlias(Class<?> sourceClass, Class<?> targetClass, String prefix, String suffix) {
-        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
-            return null;
-        }
-        assert prefix != null;
-        assert suffix != null;
-
         Map<Field, Set<Field>> map = Maps.newConcurrentMap();
+        if (ObjectUtils.isEmpty(sourceClass) || ObjectUtils.isEmpty(targetClass)) {
+            return map;
+        }
+        String finalPrefix = prefix == null ? "" : prefix;
+        String finalSuffix = suffix == null ? "" : suffix;
+
+
         Map<Field, Set<String>> sourceMap = parseFieldAlias(sourceClass);
         Map<Field, Set<String>> targetMap = parseFieldAlias(targetClass);
 
         sourceMap.entrySet().parallelStream().filter(e -> {
             final String name = e.getKey().getName();
-            return name.startsWith(prefix) && name.endsWith(suffix);
+            return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
         }).forEach(e -> {
             Set<String> sourceAlias = e.getValue();
             Set<Field> set = targetMap.entrySet().stream().filter(te ->

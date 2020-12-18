@@ -7,9 +7,9 @@ package cloud.agileframework.common.util.generator;
 public class SnowflakeIdWorker {
     // ==============================Fields===========================================
     /**
-     * 开始时间截 (2015-01-01)
+     * 开始时间截
      */
-    private static final long TWEPOCH = 1489111610226L;
+    private static final long TWEPOCH = System.currentTimeMillis();
 
     /**
      * 机器id所占的位数

@@ -29,7 +29,7 @@ public class FieldInfo {
 
     public void putSetter(Method setter) {
         if (setters == null) {
-            this.setters = Maps.newHashMap();
+            this.setters = Maps.newConcurrentMap();
         }
         Integer order = setters.get(setter);
         if (order == null) {
@@ -41,7 +41,7 @@ public class FieldInfo {
 
     public void putGetter(Method getter) {
         if (getters == null) {
-            this.getters = Maps.newHashMap();
+            this.getters = Maps.newConcurrentMap();
         }
         Integer order = getters.get(getter);
         if (order == null) {

@@ -217,7 +217,7 @@ public class ClassUtil extends ClassUtils {
     }
 
     /**
-     * 比较两个对象是否继承于同一个类
+     * 比较两个对象是否属于同一个类
      *
      * @param source 源对象
      * @param target 目标对象

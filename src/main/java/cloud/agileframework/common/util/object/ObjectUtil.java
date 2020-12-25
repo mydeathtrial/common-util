@@ -129,7 +129,7 @@ public class ObjectUtil extends ObjectUtils {
 
             }
 
-            if (result == null) {
+            if (result == null && ClassUtil.isPrimitive(from.getClass())) {
                 try {
                     Constructor<T> construct = toClass.getConstruct(String.class);
                     result = construct.newInstance(toString(from));

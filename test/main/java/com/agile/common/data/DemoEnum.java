@@ -8,7 +8,7 @@ package com.agile.common.data;
  * @since 1.0
  */
 public enum DemoEnum {
-    aa(0),BB(1),abc(2);
+    aa(0), BB(1), abc(2);
     private int a;
 
     DemoEnum(int a) {
@@ -21,6 +21,6 @@ public enum DemoEnum {
 
     @Override
     public String toString() {
-        return a+"";
+        return a + "";
     }
 }

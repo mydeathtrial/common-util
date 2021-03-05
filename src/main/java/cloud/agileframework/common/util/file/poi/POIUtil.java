@@ -27,7 +27,7 @@ import java.util.Objects;
  * @author 佟盟 on 2018/10/16
  */
 public class POIUtil {
-    private static String sortFieldName = "sort";
+    private static final String SORT_FIELD_NAME = "sort";
 
     /**
      * 创建excel
@@ -76,20 +76,20 @@ public class POIUtil {
         final List<?> data = sheetData.getData();
         if (!CollectionUtils.isEmpty(headerColumns)) {
             //对excel表头进行排序
-            CollectionsUtil.sort(headerColumns, sortFieldName);
+            CollectionsUtil.sort(headerColumns, SORT_FIELD_NAME);
 
             //创建表头
             createRow(sheet, headerColumns, currentRowIndex++, headerColumns);
 
             //逐行创建表数据
-            if(data==null){
+            if (data == null) {
                 return;
             }
             for (Object datum : data) {
                 createRow(sheet, datum, currentRowIndex++, headerColumns);
             }
         } else {
-            if(data==null){
+            if (data == null) {
                 return;
             }
             for (Object datum : data) {
@@ -310,7 +310,8 @@ public class POIUtil {
                 suffix = Objects.requireNonNull(FileUtil.getFormat((File) file)).toLowerCase();
             }
             try {
-                if ("xls".equals(suffix)) {
+                final String xls = "xls";
+                if (xls.equals(suffix)) {
                     result = new HSSFWorkbook(new FileInputStream((File) file));
                 } else {
                     result = new XSSFWorkbook(new FileInputStream((File) file));

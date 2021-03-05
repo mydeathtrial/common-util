@@ -23,12 +23,13 @@ public class StreamUtil {
 
     /**
      * 输入流转字符串
+     *
      * @param inputStream 输入流
      * @return 字符串
      */
     public static String toString(InputStream inputStream) {
-        try (ByteArrayOutputStream result = new ByteArrayOutputStream()){
-            toOutputStream(inputStream,result);
+        try (ByteArrayOutputStream result = new ByteArrayOutputStream()) {
+            toOutputStream(inputStream, result);
             return result.toString(System.getProperty("sun.jnu.encoding"));
         } catch (IOException e) {
             log.error("InputStream convert to String error", e);
@@ -38,7 +39,8 @@ public class StreamUtil {
 
     /**
      * 输入流转输出流
-     * @param inputStream 输入流
+     *
+     * @param inputStream  输入流
      * @param outputStream 输出流
      */
     public static void toOutputStream(InputStream inputStream, OutputStream outputStream) {

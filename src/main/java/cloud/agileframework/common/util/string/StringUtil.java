@@ -445,23 +445,10 @@ public class StringUtil extends StringUtils {
      */
     public static String exceptionToString(Throwable e) {
         StringWriter writer = new StringWriter();
-        try (PrintWriter pw = new PrintWriter(writer);) {
+        try (PrintWriter pw = new PrintWriter(writer)) {
             e.printStackTrace(pw);
         }
         return writer.toString();
-    }
-
-    public static void main(String[] args) {
-//        camelToMatchesRegex("asdDsa");
-        toUnderline("asdDsa");
-//        toSeparator("asdDsa", ":");
-//        Set<String> set = Sets.newHashSet();
-//        set.add("user_name");
-//        set.add("User_name");
-//        set.add("usernamE");
-//        set.add("_usernamE");getGroupByStartEnd
-//        vagueMatches("userName", set);
-        System.out.println(removeExtension("s.s"));
     }
 
     public static String getFilenameExtension(String path) {

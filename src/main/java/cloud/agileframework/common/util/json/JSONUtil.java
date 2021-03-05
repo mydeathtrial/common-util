@@ -33,7 +33,7 @@ public class JSONUtil extends JSON {
         if (javaObject == null) {
             return null;
         }
-        return (JSON)JSON.toJSON(javaObject);
+        return (JSON) JSON.toJSON(javaObject);
     }
 
     /**
@@ -184,7 +184,7 @@ public class JSONUtil extends JSON {
             try {
                 Field field = ClassUtil.getField(o.getClass(), key);
                 if (field != null) {
-                    if(!field.isAccessible()){
+                    if (!field.isAccessible()) {
                         field.setAccessible(true);
                     }
                     result = field.get(o);

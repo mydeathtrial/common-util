@@ -1,4 +1,3 @@
-
 package cloud.agileframework.common.util.http;
 
 import cloud.agileframework.common.constant.Constant;
@@ -64,7 +63,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String get(String url) {
-        return send(Protocol.extract(url), RequestMethod.Get, url, null, null);
+        return send(Protocol.extract(url), RequestMethod.GET, url, null, null);
     }
 
     /**
@@ -74,7 +73,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String get(String url, Object header) {
-        return send(Protocol.extract(url), RequestMethod.Get, url, header, null);
+        return send(Protocol.extract(url), RequestMethod.GET, url, header, null);
     }
 
     /**
@@ -84,7 +83,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String get(String url, Object header, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Get, url, header, param);
+        return send(Protocol.extract(url), RequestMethod.GET, url, header, param);
     }
 
     /**
@@ -94,7 +93,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String post(String url) {
-        return send(Protocol.extract(url), RequestMethod.Post, url, null, null);
+        return send(Protocol.extract(url), RequestMethod.POST, url, null, null);
     }
 
     /**
@@ -104,7 +103,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String post(String url, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Post, url, null, param);
+        return send(Protocol.extract(url), RequestMethod.POST, url, null, param);
     }
 
     /**
@@ -114,7 +113,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String post(String url, Object header, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Post, url, header, param);
+        return send(Protocol.extract(url), RequestMethod.POST, url, header, param);
     }
 
     /**
@@ -124,7 +123,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String put(String url) {
-        return send(Protocol.extract(url), RequestMethod.Put, url, null, null);
+        return send(Protocol.extract(url), RequestMethod.PUT, url, null, null);
     }
 
     /**
@@ -134,7 +133,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String put(String url, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Put, url, null, param);
+        return send(Protocol.extract(url), RequestMethod.PUT, url, null, param);
     }
 
     /**
@@ -144,7 +143,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String put(String url, Object header, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Put, url, header, param);
+        return send(Protocol.extract(url), RequestMethod.PUT, url, header, param);
     }
 
     /**
@@ -154,7 +153,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String delete(String url) {
-        return send(Protocol.extract(url), RequestMethod.Delete, url, null, null);
+        return send(Protocol.extract(url), RequestMethod.DELETE, url, null, null);
     }
 
     /**
@@ -164,7 +163,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String delete(String url, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Delete, url, null, param);
+        return send(Protocol.extract(url), RequestMethod.DELETE, url, null, param);
     }
 
     /**
@@ -174,7 +173,7 @@ public class HttpUtil {
      * @return 返回的字符串
      */
     public static String delete(String url, Object header, Object param) {
-        return send(Protocol.extract(url), RequestMethod.Delete, url, header, param);
+        return send(Protocol.extract(url), RequestMethod.DELETE, url, header, param);
     }
 
     /**
@@ -266,20 +265,21 @@ public class HttpUtil {
      * @param httpRequestBase 请求体
      */
     private static void parseHeader(Object header, HttpRequestBase httpRequestBase) {
-        Map<String, Object> map = ObjectUtil.to(header, new TypeReference<Map<String, Object>>() {
-        });
-        if (map instanceof Header) {
-            httpRequestBase.setHeader((Header) map);
-        } else if (map != null) {
+
+        if (header instanceof Header) {
+            httpRequestBase.setHeader((Header) header);
+        } else if (header != null) {
+            Map<String, Object> map = ObjectUtil.to(header, new TypeReference<Map<String, Object>>() {
+            });
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 httpRequestBase.setHeader(entry.getKey(), String.valueOf(entry.getValue()));
             }
-            if (httpRequestBase.getHeaders(CONTENT_TYPE) == null) {
-                httpRequestBase.setHeader(CONTENT_TYPE, "application/json; charset=utf-8");
-            }
-            if (httpRequestBase.getHeaders(CONNECTION) == null) {
-                httpRequestBase.setHeader(CONNECTION, "Close");
-            }
+        }
+        if (httpRequestBase.getHeaders(CONTENT_TYPE).length == 0) {
+            httpRequestBase.setHeader(CONTENT_TYPE, "application/json; charset=utf-8");
+        }
+        if (httpRequestBase.getHeaders(CONNECTION).length == 0) {
+            httpRequestBase.setHeader(CONNECTION, "Close");
         }
     }
 
@@ -293,16 +293,16 @@ public class HttpUtil {
     private static HttpRequestBase getHttpRequestBase(RequestMethod method) throws NotFoundRequestMethodException {
         HttpRequestBase httpRequestBase;
         switch (method) {
-            case Get:
+            case GET:
                 httpRequestBase = new HttpGet();
                 break;
-            case Put:
+            case PUT:
                 httpRequestBase = new HttpPut();
                 break;
-            case Post:
+            case POST:
                 httpRequestBase = new HttpPost();
                 break;
-            case Delete:
+            case DELETE:
                 httpRequestBase = new HttpDelete();
                 break;
             default:
@@ -411,7 +411,7 @@ public class HttpUtil {
 
         try (
                 InputStreamReader re = new InputStreamReader(response.getEntity().getContent());
-                BufferedReader bufferedReader = new BufferedReader(re);
+                BufferedReader bufferedReader = new BufferedReader(re)
         ) {
             String line;
             String newLine = System.getProperty("line.separator");
@@ -424,8 +424,15 @@ public class HttpUtil {
         return temp.toString();
     }
 
+    /**
+     * 是不是ipv4地址
+     *
+     * @param str 判断的字符串
+     * @return true是
+     */
     public static boolean isIPv4(String str) {
-        if (!Pattern.matches("[0-9]*[.][0-9]*[.][0-9]*[.][0-9]*", str)) {
+        final String ipRegex = "[0-9]*[.][0-9]*[.][0-9]*[.][0-9]*";
+        if (!Pattern.matches(ipRegex, str)) {
             return false;
         } else {
             String[] arrays = str.split("\\.");

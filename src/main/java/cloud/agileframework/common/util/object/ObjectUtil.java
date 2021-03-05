@@ -21,6 +21,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import sun.reflect.generics.reflectiveObjects.WildcardTypeImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
@@ -86,7 +87,13 @@ public class ObjectUtil extends ObjectUtils {
         if (from == null) {
             return null;
         }
-        if (toClass.isEnum()) {
+        if (toClass.isAssignableFrom(WildcardTypeImpl.class)) {
+            try {
+                result = (T) from;
+            } catch (Exception e) {
+                result = null;
+            }
+        } else if (toClass.isEnum()) {
             result = toEnum(from, toClass);
         } else if (toClass.isArray()) {
             result = toArray(from, toClass);
@@ -94,7 +101,7 @@ public class ObjectUtil extends ObjectUtils {
             result = toCollection(from, toClass);
         } else if (toClass.isExtendsFrom(Map.class)) {
             result = toMap(from, toClass);
-        } else if (toClass.isWrapOrPrimitive()) {
+        } else if (toClass.isWrapOrPrimitive() || toClass.getWrapperClass() == String.class) {
             // 基本类型转换
             result = (T) to(from, toClass.getWrapperClass());
         } else if (toClass.isExtendsFrom(Date.class)) {
@@ -109,7 +116,7 @@ public class ObjectUtil extends ObjectUtils {
                     result = null;
                 }
             }
-        } else if (toClass.isAssignableFrom(from.getClass()) || toClass.getWrapperClass() == Object.class) {
+        } else if (toClass.getType() == from.getClass()) {
             // 类型相同，直接返回
             result = (T) from;
         } else {
@@ -367,7 +374,7 @@ public class ObjectUtil extends ObjectUtils {
                                 }
                             }
                         });
-                if (!isNotChange(object)) {
+                if (isChange(object)) {
                     return object;
                 }
             }
@@ -384,7 +391,7 @@ public class ObjectUtil extends ObjectUtils {
         } else {
             T object = ClassUtil.newInstance(toClass);
             copyProperties(from, object, alias);
-            if (!isNotChange(object)) {
+            if (isChange(object)) {
                 return object;
             }
         }
@@ -453,9 +460,9 @@ public class ObjectUtil extends ObjectUtils {
      *
      * @param object 判断属性是否全部为空的对象
      */
-    public static boolean isNotChange(Object object) {
+    public static boolean isChange(Object object) {
         if (object == null) {
-            return true;
+            return false;
         }
         Class<?> clazz = object.getClass();
         try {
@@ -475,9 +482,9 @@ public class ObjectUtil extends ObjectUtils {
 
             }).collect(Collectors.toSet());
 
-            return haveValueFields.isEmpty();
+            return !haveValueFields.isEmpty();
         } catch (InstantiationException | IllegalAccessException e) {
-            return false;
+            return true;
         }
     }
 
@@ -505,7 +512,9 @@ public class ObjectUtil extends ObjectUtils {
                 final String fieldName = field.getName();
                 String setMethodName = "set" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
 
-                List<Method> list = ClassUtil.getAllMethod(objectClass).stream()
+                Set<Method> allMethod = ClassUtil.getAllMethod(objectClass);
+
+                List<Method> list = allMethod.stream()
                         .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
                         .sorted((a, b) -> {
                             int result = b.getName().compareTo(a.getName());
@@ -1300,6 +1309,29 @@ public class ObjectUtil extends ObjectUtils {
     }
 
     /**
+     * 对象的所有属性都设置为空
+     *
+     * @param object 对象
+     */
+    public static void setAllFieldNull(Object object) {
+        if (object == null) {
+            return;
+        }
+        ClassUtil.getAllField(object.getClass()).parallelStream().forEach(field -> {
+            try {
+                if (SERIAL_VERSION_UID.equals(field.getName())) {
+                    return;
+                }
+                if (!field.isAccessible()) {
+                    field.setAccessible(true);
+                }
+                field.set(object, null);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    /**
      * 对象转json字符串，类似于自定义的toString
      *
      * @param o       pojo对象
@@ -1347,7 +1379,7 @@ public class ObjectUtil extends ObjectUtils {
         Set<Field> fields = ClassUtil.getAllField(o.getClass());
         Map<String, Object> result = new HashMap<>(fields.size());
         if (!fields.isEmpty()) {
-            fields.parallelStream().forEach(field -> {
+            fields.forEach(field -> {
                 String key = StringUtil.toUnderline(field.getName());
                 try {
                     if (!field.isAccessible()) {

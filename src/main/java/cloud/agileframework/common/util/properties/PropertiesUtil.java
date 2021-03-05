@@ -73,12 +73,12 @@ public class PropertiesUtil {
     /**
      * 最终配置集
      */
-    private static final Properties properties = new Properties();
+    private static final Properties PROPERTIES = new Properties();
 
     /**
      * 扫描到的配置文件集
      */
-    private static final Set<String> fileNames = Sets.newHashSet();
+    private static final Set<String> FILE_NAMES = Sets.newHashSet();
 
     /**
      * 初始化静态块
@@ -103,9 +103,9 @@ public class PropertiesUtil {
     }
 
     private static void parsePlaceholder() {
-        for (Map.Entry<Object, Object> v : properties.entrySet()) {
+        for (Map.Entry<Object, Object> v : PROPERTIES.entrySet()) {
             if (v.getValue() instanceof String) {
-                properties.setProperty(String.valueOf(v.getKey()), StringUtil.parsingPlaceholder("${", "}", String.valueOf(v.getValue()), properties));
+                PROPERTIES.setProperty(String.valueOf(v.getKey()), StringUtil.parsingPlaceholder("${", "}", String.valueOf(v.getValue()), PROPERTIES));
             }
         }
     }
@@ -145,8 +145,8 @@ public class PropertiesUtil {
     private static Consumer<String> toRead(String classPath) {
         return fileName -> {
             try {
-                read(fileName.replace(classPath, "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)));
-            } catch (FileNotFoundException e) {
+                read(fileName.replace(URLDecoder.decode(classPath, StandardCharsets.UTF_8.name()), "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)));
+            } catch (FileNotFoundException | UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
         };
@@ -245,16 +245,21 @@ public class PropertiesUtil {
 
         try {
 
-            if (fileName.endsWith("properties")) {
+            final String properties = "properties";
+            if (fileName.endsWith(properties)) {
                 readProperties(inputStream);
-            } else if (fileName.endsWith("yml") || fileName.endsWith("yaml")) {
-                readYml(inputStream);
+            } else {
+                final String yml = "yml";
+                final String yaml = "yaml";
+                if (fileName.endsWith(yml) || fileName.endsWith(yaml)) {
+                    readYml(inputStream);
+                }
             }
             if (!fileName.endsWith(CLASS)) {
                 if (!fileName.startsWith(Constant.RegularAbout.SLASH)) {
                     fileName = Constant.RegularAbout.SLASH + fileName;
                 }
-                fileNames.add(fileName);
+                FILE_NAMES.add(fileName);
             }
 
             System.out.println(fileName);
@@ -288,7 +293,7 @@ public class PropertiesUtil {
      * @throws IOException 异常
      */
     private static void readProperties(InputStream in) throws IOException {
-        properties.load(in);
+        PROPERTIES.load(in);
     }
 
     /**
@@ -302,7 +307,7 @@ public class PropertiesUtil {
         }
         map.forEach((key, value) -> {
             try {
-                properties.setProperty(key.toString(), String.valueOf(value));
+                PROPERTIES.setProperty(key.toString(), String.valueOf(value));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -317,7 +322,7 @@ public class PropertiesUtil {
     private static void readYml(InputStream in) {
         Yaml yaml = new Yaml();
         Map<String, Object> dataMap = yaml.load(in);
-        ymlToMap(properties, dataMap, null);
+        ymlToMap(PROPERTIES, dataMap, null);
     }
 
     /**
@@ -357,7 +362,7 @@ public class PropertiesUtil {
      * @return 配置文件集合
      */
     public static Properties getProperties() {
-        return properties;
+        return PROPERTIES;
     }
 
     /**
@@ -366,7 +371,7 @@ public class PropertiesUtil {
      * @return 文件名集
      */
     public static Set<String> getFileNames() {
-        return fileNames;
+        return FILE_NAMES;
     }
 
     /**
@@ -379,7 +384,7 @@ public class PropertiesUtil {
         if (value == null) {
             return;
         }
-        properties.setProperty(key, value);
+        PROPERTIES.setProperty(key, value);
     }
 
     /**
@@ -389,11 +394,11 @@ public class PropertiesUtil {
      * @param value value
      */
     public static void appendProperties(String key, String value) {
-        String v = properties.getProperty(key);
+        String v = PROPERTIES.getProperty(key);
         if (v == null) {
-            properties.setProperty(key, value);
+            PROPERTIES.setProperty(key, value);
         } else {
-            properties.setProperty(key, v + value);
+            PROPERTIES.setProperty(key, v + value);
         }
     }
 
@@ -404,7 +409,7 @@ public class PropertiesUtil {
      * @return 值
      */
     public static String getProperty(String key) {
-        Object value = properties.get(key);
+        Object value = PROPERTIES.get(key);
         if (value != null) {
             return value.toString();
         }
@@ -473,8 +478,9 @@ public class PropertiesUtil {
             if (file.exists()) {
                 stream = new FileInputStream(file);
             } else {
-                if (!fileName.endsWith(".json")) {
-                    fileName = fileName + ".json";
+                final String suffix = ".json";
+                if (!fileName.endsWith(suffix)) {
+                    fileName = fileName + suffix;
                 }
                 String path = getFileClassPath(fileName);
                 if (path != null) {

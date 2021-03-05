@@ -3,7 +3,6 @@ package cloud.agileframework.common.util.clazz;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -17,15 +16,10 @@ import java.util.stream.Collectors;
  * @since 1.0
  */
 public class FieldInfo {
-    private final Field field;
     private Map<Method, Integer> setters;
     private Boolean noSetters;
     private Map<Method, Integer> getters;
     private Boolean noGetters;
-
-    public FieldInfo(Field field) {
-        this.field = field;
-    }
 
     public void putSetter(Method setter) {
         if (setters == null) {

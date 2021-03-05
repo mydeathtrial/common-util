@@ -17,8 +17,8 @@ public enum OSEnum {
      */
     Any("any"),
     Linux("linux"),
-    Mac_OS("mac","os"),
-    Mac_OS_X("mac","OS","X"),
+    Mac_OS("mac", "os"),
+    Mac_OS_X("mac", "OS", "X"),
     Windows("windows"),
     OS2("os/2"),
     Solaris("solaris"),
@@ -29,18 +29,18 @@ public enum OSEnum {
     OS390("os/390"),
     FreeBSD("freebsd"),
     Irix("irix"),
-    Digital_Unix("digital","unix"),
+    Digital_Unix("digital", "unix"),
     NetWare_411("netware"),
     OSF1("osf1"),
     OpenVMS("openvms"),
     Others("others");
 
-    OSEnum(String... desc){
+    OSEnum(String... desc) {
         this.desc = desc;
     }
 
     @Getter
-    private String[] desc;
+    private final String[] desc;
 
     /**
      * 获取操作系统名字
@@ -50,10 +50,10 @@ public enum OSEnum {
     public static OSEnum currentOS() {
         String osDesc = System.getProperty("os.name").toLowerCase();
         OSEnum[] oses = OSEnum.values();
-        for (OSEnum os:oses) {
+        for (OSEnum os : oses) {
             String[] desc = os.getDesc();
             boolean is = Stream.of(desc).anyMatch(osDesc::contains);
-            if(is){
+            if (is) {
                 return os;
             }
         }

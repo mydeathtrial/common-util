@@ -3,9 +3,12 @@ package cloud.agileframework.common.util.clazz;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 
 
 /**
@@ -37,12 +40,30 @@ public class TypeReference<T> {
     }
 
     public TypeReference(Type type) {
-        this.type = type;
-        if (ParameterizedType.class.isAssignableFrom(type.getClass())) {
+        if (type instanceof ParameterizedType) {
+            this.type = ((ParameterizedType) type).getRawType();
             typeArguments = ((ParameterizedType) type).getActualTypeArguments();
+        } else if (type instanceof TypeVariable) {
+            this.type = ((TypeVariable<?>) type).getBounds()[0];
         } else {
-            typeArguments = null;
+            this.type = type;
         }
+    }
+
+    private Class<?> parsingGenericArrayType(GenericArrayType type) {
+        Type componentType = type.getGenericComponentType();
+        if (componentType instanceof GenericArrayType) {
+            Class<?> childType = parsingGenericArrayType((GenericArrayType) componentType);
+            return Array.newInstance(childType, 0).getClass();
+        } else if (componentType instanceof ParameterizedType) {
+            final Type rawType = ((ParameterizedType) componentType).getRawType();
+            if (rawType instanceof Class) {
+                return Array.newInstance((Class<?>) rawType, 0).getClass();
+            }
+        } else if (componentType instanceof Class) {
+            return Array.newInstance((Class<?>) componentType, 0).getClass();
+        }
+        throw new RuntimeException("类型太复杂");
     }
 
     /**
@@ -78,8 +99,9 @@ public class TypeReference<T> {
 
     /**
      * 替换子类
+     *
      * @param index 索引
-     * @param type 子类型
+     * @param type  子类型
      */
     public void replaceParameterizedType(int index, Type type) {
         typeArguments = ArrayUtil.insert(index, ArrayUtil.remove(typeArguments, index), type);
@@ -103,7 +125,7 @@ public class TypeReference<T> {
      * @return 是否
      */
     public boolean isExtendsFrom(Class<?> clazz) {
-        Class sourceClass = getWrapperClass();
+        Class<?> sourceClass = getWrapperClass();
         return clazz.isAssignableFrom(sourceClass);
     }
 
@@ -113,7 +135,7 @@ public class TypeReference<T> {
      * @return 是否
      */
     public boolean isEnum() {
-        Class sourceClass = getWrapperClass();
+        Class<?> sourceClass = getWrapperClass();
         return sourceClass.isEnum();
     }
 
@@ -123,7 +145,7 @@ public class TypeReference<T> {
      * @return 是否
      */
     public boolean isArray() {
-        Class sourceClass = getWrapperClass();
+        Class<?> sourceClass = getWrapperClass();
         return sourceClass.isArray();
     }
 
@@ -133,7 +155,7 @@ public class TypeReference<T> {
      * @return 是否
      */
     public boolean isWrapOrPrimitive() {
-        Class sourceClass = getWrapperClass();
+        Class<?> sourceClass = getWrapperClass();
         return ClassUtil.isWrapOrPrimitive(sourceClass);
     }
 
@@ -153,9 +175,11 @@ public class TypeReference<T> {
      */
     public Class getWrapperClass() {
         if (type instanceof Class) {
-            return (Class) type;
-        } else if (type instanceof ParameterizedTypeImpl) {
+            return (Class<?>) type;
+        } else if (type instanceof ParameterizedType) {
             return ((ParameterizedTypeImpl) type).getRawType();
+        } else if (type instanceof GenericArrayType) {
+            return parsingGenericArrayType((GenericArrayType) type);
         } else {
             return Object.class;
         }

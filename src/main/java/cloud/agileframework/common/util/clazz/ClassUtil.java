@@ -98,7 +98,7 @@ public class ClassUtil extends ClassUtils {
      * @return 构造方法
      */
     public static <T> Constructor<T> getConstructor(Class<T> clazz, Class<?>... parameterTypes) {
-        ClassInfo<T> classInfo = ClassInfo.getCache(clazz);
+        ClassInfo<T> classInfo = (ClassInfo<T>) ClassInfo.getCache(clazz);
         return classInfo.getConstructor(parameterTypes);
     }
 
@@ -116,7 +116,7 @@ public class ClassUtil extends ClassUtils {
         }
 
         // 取私有构造器构造对象
-        ClassInfo<T> classInfo = ClassInfo.getCache(clazz);
+        ClassInfo<T> classInfo = (ClassInfo<T>) ClassInfo.getCache(clazz);
         Constructor<T> privateConstructor = classInfo.getPrivateConstructor();
         if (privateConstructor == null) {
             try {

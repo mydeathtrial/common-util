@@ -59,6 +59,7 @@ public class DemoA implements Serializable {
     private DemoEnum demoEnum;
 
     private DemoEnum[] demoEnumArray;
+
     public void setAttrLong(long attrLong) {
         this.attrLong = attrLong;
     }
@@ -66,9 +67,11 @@ public class DemoA implements Serializable {
     public void setAttrLong(String attrLong) {
         this.attrLong = Long.getLong(attrLong);
     }
+
     public void setAttrLong(int attrLong) {
         this.attrLong = attrLong;
     }
+
     public void setDemoAList(List<DemoA> demoAList) {
         this.demoAList = demoAList;
     }
@@ -135,7 +138,6 @@ public class DemoA implements Serializable {
             put("2", "22");
             put("3", "33");
         }});
-
 
 
         map.put("integersArray", new String[]{"1", "2"});

@@ -21,10 +21,11 @@ public enum Protocol {
 
     /**
      * 根据地址提取通信协议
+     *
      * @param url 地址
      * @return 协议
      */
-    public static Protocol extract(String url){
-        return url.trim().toLowerCase().startsWith(Constant.RegularAbout.HTTPS)?Https:Http;
+    public static Protocol extract(String url) {
+        return url.trim().toLowerCase().startsWith(Constant.RegularAbout.HTTPS) ? Https : Http;
     }
 }

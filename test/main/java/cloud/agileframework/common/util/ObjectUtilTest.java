@@ -49,17 +49,16 @@ public class ObjectUtilTest {
     public void objectToMap() {
 
 
-
         Map<String, Object> data = DemoA.testData();
         DemoA a = ObjectUtil.to(data, new TypeReference<DemoA>() {
         });
         long start = System.currentTimeMillis();
-        IntStream.range(0,20).forEach(i->{
+        IntStream.range(0, 20).forEach(i -> {
             ObjectUtil.to(data, new TypeReference<DemoA>() {
             });
         });
 
-        System.out.println("总耗时："+(System.currentTimeMillis()-start));
+        System.out.println("总耗时：" + (System.currentTimeMillis() - start));
 
 //        Object jsona =   TypeUtils.cast(data,DemoA.class, ParserConfig.getGlobalInstance());
 //        long start2 = System.currentTimeMillis();
@@ -70,8 +69,10 @@ public class ObjectUtilTest {
 //        System.out.println("总耗时："+(System.currentTimeMillis()-start2));
 
         DemoA b = new DemoA();
-        ObjectUtil.copyProperties(a,b);
-        System.out.println();
+        ObjectUtil.copyProperties(a, b);
+        if (ObjectUtil.isAllNullValidity(b)) {
+            throw new RuntimeException();
+        }
     }
 
     /**
@@ -81,8 +82,11 @@ public class ObjectUtilTest {
     public void objectToObject() {
         DemoA demoA = ObjectUtil.to(DemoA.testData(), new TypeReference<DemoA>() {
         });
-        ObjectUtil.to(demoA, new TypeReference<DemoC>() {
+        DemoC s = ObjectUtil.to(demoA, new TypeReference<DemoC>() {
         });
+        if (s == null) {
+            throw new RuntimeException();
+        }
     }
 
     /**
@@ -125,7 +129,8 @@ public class ObjectUtilTest {
         });
     }
 
-    public static void main(String[] args) throws IOException {
+    @Test
+    public void test() throws IOException {
 //        ClassReader reader = new ClassReader(DemoA.class.getCanonicalName());
 //        ClassNode cn = new ClassNode();
 //        reader.accept(cn, 0);
@@ -176,7 +181,7 @@ public class ObjectUtilTest {
             System.out.println("Filed access: " + fieldNode.access);
             if (fieldNode.visibleAnnotations != null) {
                 for (Object anNode : fieldNode.invisibleAnnotations) {
-                    System.out.println(((AnnotationNode)anNode).desc);
+                    System.out.println(((AnnotationNode) anNode).desc);
                 }
             }
         }
@@ -207,26 +212,26 @@ public class ObjectUtilTest {
 //    }
 
     @Test
-    public void getAliasInfo(){
-        Map<Field, Set<Field>> s = ObjectUtil.getSameFieldByAlias(DemoD.class, DemoE.class,"","");
+    public void getAliasInfo() {
+        Map<Field, Set<Field>> s = ObjectUtil.getSameFieldByAlias(DemoD.class, DemoE.class, "", "");
         System.out.println(s);
     }
 
 
     @Test
-    public void copyByAlias(){
+    public void copyByAlias() {
         DemoE e = new DemoE();
-        ObjectUtil.copyProperties(DemoD.builder().paramA("2").paramB(10).build(),e,true);
+        ObjectUtil.copyProperties(DemoD.builder().paramA("2").paramB(10).build(), e, true);
         System.out.println(e);
     }
 
     @Test
-    public void https(){
-        Map<String,String> map = Maps.newHashMap();
-        map.put("Accept","application/json");
-        map.put("Content-type","application/json");
+    public void https() {
+        Map<String, String> map = Maps.newHashMap();
+        map.put("Accept", "application/json");
+        map.put("Content-type", "application/json");
 //        map.put("token","ODULjdxyL99dzcSfcJ6zxNHGzivsaGAUC6i4Xt_7tT5P0bqf4Fa6gCizIhNrmxLh3wtjYFba3rfdi7I7Rvg3vg");
-        String a = HttpUtil.post("https://192.168.50.174:18081/api/holmes/scanFile", map,null);
+        String a = HttpUtil.post("https://192.168.50.174:18081/api/holmes/scanFile", map, null);
         System.out.println(a);
     }
 }

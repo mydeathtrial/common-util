@@ -178,7 +178,7 @@ public class DateUtil {
             return;
         }
         int hourOfDay = gregorianCalendar.get(Calendar.HOUR_OF_DAY);
-        if (hourOfDay <= 12 && PatternUtil.find(PM_FORMAT, source)) {
+        if (hourOfDay <= Constant.NumberAbout.TWELVE && PatternUtil.find(PM_FORMAT, source)) {
             gregorianCalendar.set(Calendar.HOUR_OF_DAY, hourOfDay + 12);
         }
     }

@@ -169,10 +169,11 @@ public class MapUtil {
         if (ClassUtil.isExtendsFrom(object.getClass(), Map.class)) {
             return (Map) object;
         }
-        if(object instanceof String){
+        if (object instanceof String) {
             try {
                 return JSON.parseObject((String) object);
-            }catch (Exception ignored){}
+            } catch (Exception ignored) {
+            }
         }
         Set<Field> fields = ClassUtil.getAllField(object.getClass());
         Map<String, Object> map = Maps.newHashMapWithExpectedSize(fields.size());
@@ -189,7 +190,8 @@ public class MapUtil {
 
     /**
      * Map所有key添加前缀
-     * @param from 转换的map
+     *
+     * @param from   转换的map
      * @param prefix 前缀
      * @return 新Map
      */

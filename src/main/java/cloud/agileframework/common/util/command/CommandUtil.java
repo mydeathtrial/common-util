@@ -2,8 +2,8 @@ package cloud.agileframework.common.util.command;
 
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,7 +17,7 @@ import java.io.Reader;
  * @since 1.0
  */
 public class CommandUtil {
-    private static Log log = LogFactory.getLog(CommandUtil.class);
+    private static final Logger log = LoggerFactory.getLogger(CommandUtil.class);
 
     public static boolean extractProcess(Process p) throws IOException {
         Reader input = new InputStreamReader(p.getInputStream());

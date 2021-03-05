@@ -1,14 +1,21 @@
 package cloud.agileframework.common.util.clazz;
 
+import cloud.agileframework.common.util.object.ObjectUtil;
 import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
+import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
+import sun.reflect.generics.repository.FieldRepository;
+import sun.reflect.generics.repository.MethodRepository;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -24,7 +31,7 @@ import java.util.stream.Collectors;
  * @since 1.0
  */
 public class ClassInfo<T> {
-    private static final Map<Class<?>, ClassInfo<?>> CACHE = Maps.newHashMap();
+    private static final Map<String, ClassInfo<?>> CACHE = Maps.newConcurrentMap();
     private final Class<T> clazz;
     private Map<String, Constructor<T>> constructors;
     private Constructor<T> privateConstructor;
@@ -35,16 +42,63 @@ public class ClassInfo<T> {
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> fieldAnnotations;
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> methodAnnotations;
     private Map<Field, FieldInfo> fieldInfoCache;
+    private final Map<String, Type> typeVariableClassMap = Maps.newConcurrentMap();
+    private boolean parsed = false;
 
-    public ClassInfo(Class<T> clazz) {
-        this.clazz = clazz;
+    public ClassInfo(Type type) {
+
+        if (type instanceof ParameterizedTypeImpl) {
+            this.clazz = (Class<T>) ((ParameterizedTypeImpl) type).getRawType();
+        } else if (type instanceof Class) {
+            this.clazz = (Class<T>) type;
+        } else {
+            this.clazz = null;
+        }
+        getTypeParameterName(type);
     }
 
-    public static <A> ClassInfo<A> getCache(Class<A> clazz) {
-        ClassInfo<?> target = CACHE.get(clazz);
+    private void getTypeParameterName(Type currentType) {
+        Class<?> clazz = null;
+        if (currentType instanceof ParameterizedTypeImpl) {
+            clazz = ((ParameterizedTypeImpl) currentType).getRawType();
+        } else if (currentType instanceof Class) {
+            clazz = (Class<?>) currentType;
+        }
+        Class<?> superClass = clazz.getSuperclass();
+
+        if (superClass == Object.class) {
+            return;
+        }
+
+        getTypeParameterName(superClass);
+
+        Type supper = clazz.getGenericSuperclass();
+        if (supper instanceof ParameterizedTypeImpl) {
+            TypeVariable<? extends Class<?>>[] superClassTypeParameters = superClass.getTypeParameters();
+
+            Type[] typeParameters = ((ParameterizedTypeImpl) supper).getActualTypeArguments();
+
+            for (int i = 0; i < superClassTypeParameters.length; i++) {
+                final TypeVariable<? extends Class<?>> key = superClassTypeParameters[i];
+                Type value = typeParameters[i];
+                if (value instanceof TypeVariableImpl) {
+                    value = typeVariableClassMap.get(((TypeVariableImpl<?>) value).getName());
+                }
+                if (value == null) {
+                    continue;
+                }
+                typeVariableClassMap.put(key.getName(), value);
+            }
+        }
+
+
+    }
+
+    public static <A extends Type> ClassInfo<A> getCache(A type) {
+        ClassInfo<?> target = CACHE.get(type.toString());
         if (target == null) {
-            target = new ClassInfo<>(clazz);
-            CACHE.put(clazz, target);
+            target = new ClassInfo<>((Class<A>) type);
+            CACHE.put(type.toString(), target);
         }
         return (ClassInfo<A>) target;
     }
@@ -169,8 +223,51 @@ public class ClassInfo<T> {
                 }
                 fieldMap.put(key, targetField);
             }
+
         }
+
         return targetField;
+    }
+
+    /**
+     * 处理属性泛型
+     *
+     * @param targetField 属性
+     */
+    public void parsingGeneric(Field targetField) {
+        if (targetField == null) {
+            return;
+        }
+
+        try {
+            Method getGenericInfoMethod = Field.class.getDeclaredMethod("getGenericInfo");
+            getGenericInfoMethod.setAccessible(true);
+            getGenericInfoMethod.invoke(targetField);
+        } catch (Exception ignored) {
+        }
+
+        Object genericInfo = ObjectUtil.getFieldValue(targetField, "genericInfo");
+        if (genericInfo == null) {
+            return;
+        }
+        final Type genericType = targetField.getGenericType();
+        if (genericType instanceof TypeVariableImpl) {
+            try {
+                final Type value = typeVariableClassMap.get(((TypeVariableImpl<?>) genericType).getName());
+                if (value == null) {
+                    return;
+                }
+
+                final Field genericTypeField = ClassUtil.getField(FieldRepository.class, "genericType");
+                genericTypeField.setAccessible(true);
+                ObjectUtil.setValue(genericInfo, genericTypeField, value);
+
+                final Field typeField = ClassUtil.getField(Field.class, "type");
+                typeField.setAccessible(true);
+                ObjectUtil.setValue(targetField, typeField, value);
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     public Method getMethod(String methodName, Class<?>... paramTypes) {
@@ -217,6 +314,107 @@ public class ClassInfo<T> {
         return targetMethod;
     }
 
+    /**
+     * 处理方法泛型
+     *
+     * @param targetMethod 方法
+     */
+    public void parsingGeneric(Method targetMethod) {
+        try {
+            Method getGenericInfoMethod = Method.class.getDeclaredMethod("getGenericInfo");
+            getGenericInfoMethod.setAccessible(true);
+            getGenericInfoMethod.invoke(targetMethod);
+        } catch (Exception ignored) {
+        }
+
+        try {
+            setParameterTypes(targetMethod);
+
+            setReturnType(targetMethod);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 设置返回类型
+     *
+     * @param targetMethod 方法
+     * @throws NoSuchFieldException   没这个字段
+     * @throws IllegalAccessException 访问限制
+     */
+    private void setReturnType(Method targetMethod) throws NoSuchFieldException, IllegalAccessException {
+        Field genericInfoField = Method.class.getDeclaredField("genericInfo");
+        genericInfoField.setAccessible(true);
+        Object genericInfo = genericInfoField.get(targetMethod);
+        if (genericInfo == null) {
+            return;
+        }
+
+        Type genericReturnType = targetMethod.getGenericReturnType();
+        if (genericReturnType instanceof TypeVariableImpl) {
+            final Type v = typeVariableClassMap.get(genericReturnType.getTypeName());
+
+            final Field returnType = MethodRepository.class.getDeclaredField("returnType");
+            returnType.setAccessible(true);
+            returnType.set(genericInfo, v);
+
+            final Field returnTypeField = Method.class.getDeclaredField("returnType");
+            returnTypeField.setAccessible(true);
+            returnTypeField.set(targetMethod, v);
+        }
+    }
+
+    /**
+     * 设置方法入参类型
+     *
+     * @param targetMethod 方法
+     * @throws NoSuchFieldException   没这个字段
+     * @throws IllegalAccessException 访问限制
+     */
+    private void setParameterTypes(Method targetMethod) throws NoSuchFieldException, IllegalAccessException {
+        final Type[] types = Arrays.stream(targetMethod.getGenericParameterTypes())
+                .map(t -> {
+                    Type v = typeVariableClassMap.get(t.getTypeName());
+                    return v == null ? t : v;
+                })
+                .collect(Collectors.toList())
+                .toArray(new Type[]{});
+
+        if (types.length == 0) {
+            return;
+        }
+
+        Field genericInfoField = Method.class.getDeclaredField("genericInfo");
+        genericInfoField.setAccessible(true);
+        Object genericInfo = genericInfoField.get(targetMethod);
+        if (genericInfo == null) {
+            return;
+        }
+
+        Field parameterTypes;
+        try {
+            parameterTypes = MethodRepository.class.getSuperclass().getDeclaredField("paramTypes");
+        } catch (NoSuchFieldException e) {
+            parameterTypes = MethodRepository.class.getSuperclass().getDeclaredField("parameterTypes");
+        }
+
+        parameterTypes.setAccessible(true);
+        parameterTypes.set(genericInfo, types);
+
+        final Field methodParameterTypes = Method.class.getDeclaredField("parameterTypes");
+        methodParameterTypes.setAccessible(true);
+
+        Class<?>[] classes = new Class[types.length];
+        for (int i = 0; i < types.length; i++) {
+            if (!(types[i] instanceof Class)) {
+                return;
+            }
+            classes[i] = (Class<?>) types[i];
+        }
+        methodParameterTypes.set(targetMethod, classes);
+    }
+
     public Class<?> getClazz() {
         return clazz;
     }
@@ -227,7 +425,10 @@ public class ClassInfo<T> {
         }
         if (allField.isEmpty()) {
             extractFieldRecursion(clazz, allField);
-            allField.parallelStream().forEach(field -> field.setAccessible(true));
+            allField.parallelStream().forEach(field -> {
+                field.setAccessible(true);
+                parsingGeneric(field);
+            });
         }
         return allField;
     }
@@ -251,13 +452,20 @@ public class ClassInfo<T> {
         extractFieldRecursion(superClass, set);
     }
 
-    public Set<Method> getAllMethod() {
+    public synchronized Set<Method> getAllMethod() {
         if (allMethod == null) {
             allMethod = Sets.newConcurrentHashSet();
         }
         if (allMethod.isEmpty()) {
             extractMethodRecursion(clazz, allMethod);
-            allMethod.parallelStream().forEach(method -> method.setAccessible(true));
+
+        }
+        if (!parsed) {
+            allMethod.forEach(method -> {
+                method.setAccessible(true);
+                parsingGeneric(method);
+            });
+            parsed = true;
         }
         return allMethod;
     }
@@ -287,7 +495,7 @@ public class ClassInfo<T> {
         }
         FieldInfo fieldInfo = fieldInfoCache.get(field);
         if (fieldInfo == null) {
-            fieldInfo = new FieldInfo(field);
+            fieldInfo = new FieldInfo();
             fieldInfoCache.put(field, fieldInfo);
         }
         return fieldInfo;

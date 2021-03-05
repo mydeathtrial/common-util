@@ -56,7 +56,8 @@ public class JarUtil {
             Collections.list(JarUtil.class.getClassLoader().getResources(toEntryName(packagePath)))
                     .stream()
                     .map(path -> {
-                        if ("jar".equalsIgnoreCase(path.getProtocol())) {
+                        final String jar = "jar";
+                        if (jar.equalsIgnoreCase(path.getProtocol())) {
                             return path.getPath().substring(0, path.getPath().indexOf("!")).replace("file:", "");
                         }
                         return null;

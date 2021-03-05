@@ -37,7 +37,7 @@ public class TreeUtil {
         if (!list.isEmpty()) {
             T entity = list.get(0);
             Class<T> tClass = (Class<T>) entity.getClass();
-            ClassInfo<T> tClassInfo = ClassInfo.getCache(tClass);
+            ClassInfo<T> tClassInfo = (ClassInfo<T>) ClassInfo.getCache(tClass);
 
 
             Field keyField = tClassInfo.getField(key);
@@ -72,7 +72,7 @@ public class TreeUtil {
             try {
                 Object currentNodeParentKeyValue = ObjectUtil.getFieldValue(currentNode, parentKeyField);
                 final boolean isChild = parentNodeKeyValue == null && currentNodeParentKeyValue == null
-                        || (parentNodeKeyValue != null && parentNodeKeyValue.equals(currentNodeParentKeyValue));
+                        || (parentNodeKeyValue != null && String.valueOf(parentNodeKeyValue).equals(String.valueOf(currentNodeParentKeyValue)));
                 if (isChild) {
                     children.add(currentNode);
 

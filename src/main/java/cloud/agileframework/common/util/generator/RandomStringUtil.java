@@ -12,10 +12,10 @@ import java.util.UUID;
  */
 public class RandomStringUtil extends RandomStringUtils {
 
-    private static final String[] lettersOfLowers = {"q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "z", "x", "c", "v", "b", "n", "m"};
-    private static final String[] lettersOfUppers = {"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Z", "X", "C", "V", "B", "N", "M"};
-    private static final String[] symbols = {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+", "{", "}", "|", "}", "[", "]", "\\", ":", "\"", ";", "'", "<", ">", ",", ".", "?", "/", "~", "`"};
-    private static final String[] numbers = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+    private static final String[] LETTERS_OF_LOWERS = {"q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "a", "s", "d", "f", "g", "h", "j", "k", "l", "z", "x", "c", "v", "b", "n", "m"};
+    private static final String[] LETTERS_OF_UPPERS = {"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "A", "S", "D", "F", "G", "H", "J", "K", "L", "Z", "X", "C", "V", "B", "N", "M"};
+    private static final String[] SYMBOLS = {"!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+", "{", "}", "|", "}", "[", "]", "\\", ":", "\"", ";", "'", "<", ">", ",", ".", "?", "/", "~", "`"};
+    private static final String[] NUMBERS = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
     private static final int DIGIT = 32;
 
@@ -40,22 +40,22 @@ public class RandomStringUtil extends RandomStringUtils {
         Object[] temp = null;
         switch (random) {
             case NUMBER:
-                temp = numbers;
+                temp = NUMBERS;
                 break;
             case LETTER:
-                temp = ArrayUtils.addAll(lettersOfLowers, lettersOfUppers);
+                temp = ArrayUtils.addAll(LETTERS_OF_LOWERS, LETTERS_OF_UPPERS);
                 break;
             case LETTER_LOWER:
-                temp = lettersOfLowers;
+                temp = LETTERS_OF_LOWERS;
                 break;
             case LETTER_UPPER:
-                temp = lettersOfUppers;
+                temp = LETTERS_OF_UPPERS;
                 break;
             case MIX_1:
-                temp = ArrayUtil.addAll(lettersOfLowers, lettersOfUppers, numbers);
+                temp = ArrayUtil.addAll(LETTERS_OF_LOWERS, LETTERS_OF_UPPERS, NUMBERS);
                 break;
             case MIX_2:
-                temp = ArrayUtil.addAll(lettersOfLowers, lettersOfUppers, symbols, numbers);
+                temp = ArrayUtil.addAll(LETTERS_OF_LOWERS, LETTERS_OF_UPPERS, SYMBOLS, NUMBERS);
                 break;
             case ROUTINE:
                 return routine(Boolean.TRUE);

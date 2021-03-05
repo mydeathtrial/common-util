@@ -8,8 +8,20 @@ package cloud.agileframework.common.util.http;
  * @since 1.0
  */
 public enum RequestMethod {
-    Get,
-    Post,
-    Put,
-    Delete
+    /**
+     * GET
+     */
+    GET,
+    /**
+     * POST
+     */
+    POST,
+    /**
+     * put
+     */
+    PUT,
+    /**
+     * delete
+     */
+    DELETE
 }

@@ -24,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -162,8 +163,11 @@ public class FileUtil extends FileUtils {
 
     private static void setContentDisposition(String fileName, HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException {
         String contentDisposition;
-        if (request.getHeader("User-Agent").toLowerCase().indexOf("firefox") > 0) {
-            contentDisposition = String.format("attachment; filename=\"%s\"", "=?UTF-8?B?" + (new String(Base64.encodeBase64(fileName.getBytes("UTF-8")))) + "?=");
+        final String userAgent = "User-Agent";
+        final String firefox = "firefox";
+        final boolean isFireFox = request.getHeader(userAgent).toLowerCase().contains(firefox);
+        if (isFireFox) {
+            contentDisposition = String.format("attachment; filename=\"%s\"", "=?UTF-8?B?" + (new String(Base64.encodeBase64(fileName.getBytes(StandardCharsets.UTF_8)))) + "?=");
         } else {
             contentDisposition = String.format("attachment; filename=\"%s\"", URLEncoder.encode(fileName, "UTF-8"));
         }

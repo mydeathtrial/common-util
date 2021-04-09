@@ -5,6 +5,7 @@ import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
 import sun.reflect.generics.repository.FieldRepository;
@@ -13,9 +14,12 @@ import sun.reflect.generics.repository.MethodRepository;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -253,11 +257,7 @@ public class ClassInfo<T> {
         final Type genericType = targetField.getGenericType();
         if (genericType instanceof TypeVariableImpl) {
             try {
-                final Type value = typeVariableClassMap.get(((TypeVariableImpl<?>) genericType).getName());
-                if (value == null) {
-                    return;
-                }
-
+                Type value = switchParseType(genericType);
                 final Field genericTypeField = ClassUtil.getField(FieldRepository.class, "genericType");
                 genericTypeField.setAccessible(true);
                 ObjectUtil.setValue(genericInfo, genericTypeField, value);
@@ -265,8 +265,54 @@ public class ClassInfo<T> {
                 final Field typeField = ClassUtil.getField(Field.class, "type");
                 typeField.setAccessible(true);
                 ObjectUtil.setValue(targetField, typeField, value);
-            } catch (Exception ignored) {
-            }
+            }catch (Exception ignored){}
+        }
+    }
+
+    private Type parseType(TypeVariable<?> typeVariable){
+        final Type value = typeVariableClassMap.get(typeVariable.getName());
+        if (value == null) {
+            return typeVariable;
+        }
+        return value;
+    }
+
+    private Type parseType(ParameterizedType parameterizedType){
+        Type[] upperBounds = Arrays.stream(parameterizedType.getActualTypeArguments())
+                .map(this::switchParseType)
+                .toArray(Type[]::new);
+        return TypeUtils.parameterizeWithOwner(parameterizedType.getOwnerType(), (Class<?>) parameterizedType.getRawType(),upperBounds);
+    }
+
+    private Type parseType(GenericArrayType parameterizedType){
+        return switchParseType(parameterizedType.getGenericComponentType());
+    }
+
+
+    private Type parseType(WildcardType wildcardType){
+        Type[] upperBounds = Arrays.stream(wildcardType.getUpperBounds())
+                .map(this::switchParseType)
+                .toArray(Type[]::new);
+
+
+        Type[] lowerBounds =  Arrays.stream(wildcardType.getLowerBounds())
+                .map(this::switchParseType)
+                .toArray(Type[]::new);
+
+        return TypeUtils.wildcardType().withUpperBounds(upperBounds).withLowerBounds(lowerBounds).build();
+    }
+
+    private Type switchParseType(Type upperBound) {
+        if (upperBound instanceof TypeVariableImpl) {
+            return parseType((TypeVariableImpl<?>) upperBound);
+        } else if (upperBound instanceof WildcardType) {
+            return parseType((WildcardType) upperBound);
+        } else if (upperBound instanceof ParameterizedType) {
+            return parseType((ParameterizedType) upperBound);
+        }else if(upperBound instanceof GenericArrayType){
+            return parseType((GenericArrayType) upperBound);
+        }else{
+            return upperBound;
         }
     }
 

@@ -10,13 +10,12 @@ import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.Hashtable;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
@@ -133,12 +132,12 @@ public class MapUtil {
             toClass.addParameterizedType(Object.class);
         }
         Map<K, V> result;
-        Class wrapperClass = toClass.getWrapperClass();
+        Class<?> wrapperClass = toClass.getWrapperClass();
         if (wrapperClass.isInterface()) {
-            if (toClass.isExtendsFrom(Dictionary.class)) {
-                result = new Hashtable<>();
-            } else if (toClass.isExtendsFrom(ConcurrentMap.class)) {
+            if (wrapperClass == ConcurrentMap.class) {
                 result = Maps.newConcurrentMap();
+            } else if (wrapperClass == SortedMap.class) {
+                result = (Map<K, V>) Maps.newTreeMap();
             } else {
                 result = Maps.newHashMapWithExpectedSize(from.size());
             }

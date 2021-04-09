@@ -43,6 +43,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -301,16 +307,23 @@ public class ObjectUtil extends ObjectUtils {
                 }
 
                 Collection<?> collection;
-                if ((toClass.getWrapperClass()).isInterface()) {
-                    if (toClass.isExtendsFrom(Queue.class)) {
+                final Class<?> wrapperClass = toClass.getWrapperClass();
+                if (wrapperClass.isInterface()) {
+                    if (wrapperClass == Queue.class) {
                         collection = new ArrayDeque<>();
-                    } else if (toClass.isExtendsFrom(Set.class)) {
+                    } else if (wrapperClass == BlockingDeque.class) {
+                        collection = new LinkedBlockingDeque<>();
+                    } else if (wrapperClass == BlockingQueue.class) {
+                        collection = new LinkedBlockingQueue<>();
+                    } else if (wrapperClass == Set.class) {
                         collection = new HashSet<>();
+                    } else if (wrapperClass == SortedSet.class) {
+                        collection = new TreeSet<>();
                     } else {
                         collection = new ArrayList<>();
                     }
                 } else {
-                    collection = (Collection<?>) ClassUtil.newInstance(toClass.getWrapperClass());
+                    collection = (Collection<?>) ClassUtil.newInstance(wrapperClass);
                 }
 
                 if (collection != null) {

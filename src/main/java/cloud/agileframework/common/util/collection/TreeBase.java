@@ -1,7 +1,6 @@
 package cloud.agileframework.common.util.collection;
 
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -15,7 +14,6 @@ import java.util.TreeSet;
  * @version 1.0
  * @since 1.0
  */
-@EqualsAndHashCode
 @Data
 public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
     private I id;
@@ -23,7 +21,11 @@ public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
     private Integer sort;
     private SortedSet<? extends TreeBase<I>> children = new TreeSet<>();
 
-
+    /**
+     * 重写比较方法，规避children比较
+     * @param o 比较对象
+     * @return 是否相等
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -41,6 +43,11 @@ public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
         return Objects.hash(getId(), getParentId(), getSort());
     }
 
+    /**
+     * 处理排序，规避TreeSet比较时返回0导致数据丢失问题
+     * @param o 比较对象
+     * @return 比较结果
+     */
     @Override
     public int compareTo(TreeBase<I> o) {
         if (o == null) {

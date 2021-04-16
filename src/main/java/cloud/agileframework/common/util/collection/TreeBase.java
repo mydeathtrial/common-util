@@ -15,14 +15,19 @@ import java.util.TreeSet;
  * @since 1.0
  */
 @Data
-public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
+public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implements Comparable<TreeBase<I, A>>, Serializable {
     private I id;
     private I parentId;
     private Integer sort;
-    private SortedSet<? extends TreeBase<I>> children = new TreeSet<>();
+    private SortedSet<A> children = new TreeSet<>();
+
+    public <B extends A> void setChildren(SortedSet<B> children) {
+        this.children.addAll(children);
+    }
 
     /**
      * 重写比较方法，规避children比较
+     *
      * @param o 比较对象
      * @return 是否相等
      */
@@ -34,7 +39,7 @@ public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
         if (!(o instanceof TreeBase)) {
             return false;
         }
-        TreeBase<?> treeBase = (TreeBase<?>) o;
+        TreeBase<?, ?> treeBase = (TreeBase<?, ?>) o;
         return Objects.equals(getId(), treeBase.getId()) && Objects.equals(getParentId(), treeBase.getParentId()) && Objects.equals(getSort(), treeBase.getSort());
     }
 
@@ -45,11 +50,12 @@ public class TreeBase<I> implements Comparable<TreeBase<I>>, Serializable {
 
     /**
      * 处理排序，规避TreeSet比较时返回0导致数据丢失问题
+     *
      * @param o 比较对象
      * @return 比较结果
      */
     @Override
-    public int compareTo(TreeBase<I> o) {
+    public int compareTo(TreeBase<I, A> o) {
         if (o == null) {
             return 1;
         }

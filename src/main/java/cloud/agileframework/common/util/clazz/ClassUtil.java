@@ -9,11 +9,19 @@ import org.apache.commons.lang3.ObjectUtils;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -226,4 +234,255 @@ public class ClassUtil extends ClassUtils {
     public static Boolean compareClass(Object source, Object target) {
         return ObjectUtils.isEmpty(source) ? ObjectUtils.isEmpty(target) : (!ObjectUtils.isEmpty(target) && source.getClass() == (target.getClass()));
     }
+
+
+    public static Constructor<Type> getConstruct(Type type, Class<?>... parameterTypes) {
+        if (type instanceof ParameterizedType) {
+            return getConstruct((ParameterizedType) type, parameterTypes);
+        } else if (type instanceof GenericArrayType) {
+            return null;
+        } else if (type instanceof TypeVariable) {
+            return getConstruct((TypeVariable<?>) type, parameterTypes);
+        } else if (type instanceof WildcardType) {
+            return getConstruct((WildcardType) type, parameterTypes);
+        } else {
+            return (Constructor<Type>) getConstruct((Class<?>) type, parameterTypes);
+        }
+    }
+
+    public static Constructor<Type> getConstruct(ParameterizedType parameterizedType, Class<?>[] parameterTypes) {
+        return getConstruct(parameterizedType.getRawType(), parameterTypes);
+    }
+
+    public static Constructor<Type> getConstruct(TypeVariable<?> typeVariable, Class<?>[] parameterTypes) {
+        return Arrays.stream(typeVariable.getBounds())
+                .map(a -> getConstruct(a, parameterTypes))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static Constructor<Type> getConstruct(WildcardType wildcardType, Class<?>[] parameterTypes) {
+        return Arrays.stream(wildcardType.getLowerBounds())
+                .map(a -> getConstruct(a, parameterTypes))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static <F> Constructor<F> getConstruct(Class<F> clazz, Class<?>[] parameterTypes) {
+        if (clazz.isInterface()) {
+            return null;
+        }
+        return ClassUtil.getConstructor(clazz, parameterTypes);
+    }
+
+    public static Class<?> isWrapOrPrimitive(Type type) {
+        if (type instanceof ParameterizedType) {
+            return null;
+        } else if (type instanceof GenericArrayType) {
+            return null;
+        } else if (type instanceof TypeVariable) {
+            return isWrapOrPrimitive((TypeVariable<?>) type);
+        } else if (type instanceof WildcardType) {
+            return isWrapOrPrimitive((WildcardType) type);
+        } else {
+            if (ClassUtils.isPrimitiveOrWrapper((Class<?>) type)) {
+                return (Class<?>) type;
+            }
+            return null;
+        }
+    }
+
+    public static Class<?> isWrapOrPrimitive(TypeVariable<?> type) {
+        return Arrays.stream((type)
+                .getBounds())
+                .map(ClassUtil::isWrapOrPrimitive)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static Class<?> isWrapOrPrimitive(WildcardType type) {
+        return Arrays.stream((type)
+                .getUpperBounds())
+                .map(ClassUtil::isWrapOrPrimitive)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    public static boolean isAssignableFrom(Type type, Class<?> clazz, boolean positive) {
+        if (type instanceof ParameterizedType) {
+            return isAssignableFrom((ParameterizedType) type, clazz, positive);
+        } else if (type instanceof GenericArrayType) {
+            return isAssignableFrom((GenericArrayType) type, clazz, positive);
+        } else if (type instanceof TypeVariable) {
+            return isAssignableFrom((TypeVariable<?>) type, clazz, positive);
+        } else if (type instanceof WildcardType) {
+            return isAssignableFrom((WildcardType) type, clazz, positive);
+        } else {
+            return isAssignableFrom((Class<?>) type, (Type) clazz, positive);
+        }
+    }
+
+    public static boolean isAssignableFrom(Class<?> type, Type clazz, boolean positive) {
+        if (clazz instanceof ParameterizedType) {
+            return isAssignableFrom((ParameterizedType) clazz, type, positive);
+        } else if (clazz instanceof GenericArrayType) {
+            return isAssignableFrom((GenericArrayType) clazz, type, positive);
+        } else if (clazz instanceof TypeVariable) {
+            return isAssignableFrom((TypeVariable<?>) clazz, type, positive);
+        } else if (clazz instanceof WildcardType) {
+            return isAssignableFrom((WildcardType) clazz, type, positive);
+        } else {
+            return positive ? type.isAssignableFrom(((Class<?>) clazz)) :
+                    ((Class<?>) clazz).isAssignableFrom(type);
+        }
+    }
+
+
+    /**
+     * 参数化类型
+     *
+     * @param parameterizedType
+     * @param clazz
+     * @param positive
+     * @return
+     */
+    public static boolean isAssignableFrom(ParameterizedType parameterizedType, Class<?> clazz, boolean positive) {
+        Type rawType = parameterizedType.getRawType();
+        if (rawType instanceof Class) {
+            return positive ? ((Class<?>) rawType).isAssignableFrom(clazz) : clazz.isAssignableFrom(((Class<?>) rawType));
+        } else {
+            return isAssignableFrom(rawType, clazz, positive);
+        }
+    }
+
+    /**
+     * 泛型数组、参数化类型数组
+     *
+     * @param genericArrayType
+     * @param clazz
+     * @param positive
+     * @return
+     */
+    public static boolean isAssignableFrom(GenericArrayType genericArrayType, Class<?> clazz, boolean positive) {
+        Type genericComponentType = genericArrayType.getGenericComponentType();
+        if (genericComponentType instanceof ParameterizedType) {
+            return isAssignableFrom((ParameterizedType) genericComponentType, clazz, positive);
+        } else if (genericComponentType instanceof TypeVariable) {
+            return isAssignableFrom((TypeVariable<?>) genericComponentType, clazz, positive);
+        }
+        return false;
+    }
+
+    /**
+     * 泛型
+     *
+     * @param typeVariable
+     * @param clazz
+     * @param positive
+     * @return
+     */
+    public static boolean isAssignableFrom(TypeVariable<?> typeVariable, Class<?> clazz, boolean positive) {
+        //如果判断clazz是不是typeVariable子类，由于只有上边界，所以无法比较
+        if (positive) {
+            return false;
+        }
+        Type[] bounds = typeVariable.getBounds();
+        for (Type type : bounds) {
+            boolean is = isAssignableFrom(type, clazz, false);
+            if (is) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 通配符
+     *
+     * @param wildcardType 通配符类型
+     * @param clazz        类型
+     * @param positive
+     * @return
+     */
+    public static boolean isAssignableFrom(WildcardType wildcardType, Class<?> clazz, boolean positive) {
+        Type[] lowerBounds = wildcardType.getLowerBounds();
+        Type[] upperBounds = wildcardType.getUpperBounds();
+        if (positive && lowerBounds.length > 0) {
+            //查看clazz是不是wildcardType子类时，以wildcardType下边界匹配
+            for (Type type : lowerBounds) {
+                if (!(type instanceof Class)) {
+                    continue;
+                }
+                boolean is = isAssignableFrom(type, clazz, true);
+                if (is) {
+                    return true;
+                }
+            }
+        } else if (!positive && upperBounds.length > 0) {
+            //查看clazz是不是wildcardType父类时，以wildcardType上边界匹配
+            for (Type type : upperBounds) {
+                boolean is = isAssignableFrom(type, clazz, false);
+                if (is) {
+                    return true;
+                }
+            }
+        } else if (positive && upperBounds.length == 0) {
+            //不存在上下边界说明匹配任意对象，所以是任意对象父类
+            return true;
+        }
+
+        return false;
+    }
+
+    public static Class<?> getWrapper(Type type) {
+        if (type instanceof ParameterizedType) {
+            return getWrapper((ParameterizedType) type);
+        } else if (type instanceof TypeVariable) {
+            return getWrapper((TypeVariable<?>) type);
+        } else if (type instanceof GenericArrayType) {
+            return getWrapper((GenericArrayType) type);
+        } else if (type instanceof WildcardType) {
+            return getWrapper((WildcardType) type);
+        } else {
+            return (Class<?>) type;
+        }
+    }
+
+    public static Class<?> getWrapper(ParameterizedType type) {
+        return getWrapper(type.getRawType());
+    }
+
+    public static Class<?> getWrapper(TypeVariable<?> type) {
+        return Arrays.stream(type.getBounds())
+                .map(ClassUtil::getWrapper)
+                .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
+                .orElse(null);
+    }
+
+    public static Class<?> getWrapper(GenericArrayType type) {
+        Class<?> wrapper = getWrapper(type.getGenericComponentType());
+        if (wrapper == null) {
+            return null;
+        }
+        return Array.newInstance(wrapper, 0).getClass();
+    }
+
+    public static Class<?> getWrapper(WildcardType type) {
+        Class<?> result = Arrays.stream(type.getUpperBounds())
+                .map(ClassUtil::getWrapper)
+                .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
+                .orElse(null);
+        if (result == null) {
+            result = Arrays.stream(type.getLowerBounds())
+                    .map(ClassUtil::getWrapper)
+                    .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
+                    .orElse(null);
+        }
+        return result;
+    }
+
 }

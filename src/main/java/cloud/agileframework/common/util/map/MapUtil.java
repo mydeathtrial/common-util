@@ -8,6 +8,7 @@ import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Maps;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
@@ -127,34 +129,39 @@ public class MapUtil {
      * @return 转换后的新Map
      */
     public static <K, V, K1, V1> Map<K, V> toMap(Map<K1, V1> from, TypeReference<Map<K, V>> toClass) {
-        if (!toClass.hasParameterizedType()) {
-            toClass.addParameterizedType(String.class);
-            toClass.addParameterizedType(Object.class);
+        Type mapType = toClass.getType();
+        if (!(mapType instanceof ParameterizedType)) {
+            return (Map<K, V>) from;
         }
+        ParameterizedType parameterizedType = (ParameterizedType) mapType;
+        Class<?> wrapperClass = ClassUtil.getWrapper(toClass.getType());
+
         Map<K, V> result;
-        Class<?> wrapperClass = toClass.getWrapperClass();
+
         if (wrapperClass.isInterface()) {
             if (wrapperClass == ConcurrentMap.class) {
                 result = Maps.newConcurrentMap();
             } else if (wrapperClass == SortedMap.class) {
-                result = (Map<K, V>) Maps.newTreeMap();
+                result = new TreeMap<>();
             } else {
                 result = Maps.newHashMapWithExpectedSize(from.size());
             }
         } else {
-            result = (Map<K, V>) ClassUtil.newInstance(wrapperClass);
+            result = (Map<K, V>) ClassUtil.newInstance((Class) wrapperClass);
         }
 
-        if (result != null) {
-            Type keyClass = toClass.getParameterizedType(0);
-            Type valueClass = toClass.getParameterizedType(1);
-            for (Map.Entry<K1, V1> entry : from.entrySet()) {
-                K key = ObjectUtil.to(entry.getKey(), new TypeReference<K>(keyClass) {
-                });
-                V value = ObjectUtil.to(entry.getValue(), new TypeReference<V>(valueClass) {
-                });
-                result.put(key, value);
-            }
+        if (result == null) {
+            return null;
+        }
+        Type[] arguments = parameterizedType.getActualTypeArguments();
+        Type keyClass = arguments[0];
+        Type valueClass = arguments[1];
+        for (Map.Entry<K1, V1> entry : from.entrySet()) {
+            K key = ObjectUtil.to(entry.getKey(), new TypeReference<K>(keyClass) {
+            });
+            V value = ObjectUtil.to(entry.getValue(), new TypeReference<V>(valueClass) {
+            });
+            result.put(key, value);
         }
         return result;
     }

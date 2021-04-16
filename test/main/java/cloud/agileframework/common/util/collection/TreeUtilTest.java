@@ -1,10 +1,14 @@
 package cloud.agileframework.common.util.collection;
 
+import com.agile.common.data.DictionaryDataBase;
+import com.agile.common.data.DictionaryNode;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -42,10 +46,11 @@ public class TreeUtilTest extends TestCase {
     }
 
     public void testCreateTree() {
+
         long start = System.currentTimeMillis();
-        int i = 100;
+        int i = 10;
         while (i > 0) {
-            SortedSet<TreeNode> a = TreeUtil.createTree(SerializationUtils.clone(list), null,"/","full");
+            SortedSet<TreeNode> a = TreeUtil.createTree(SerializationUtils.clone(list), null, "/", "full");
             i--;
         }
         System.out.println("old" + (System.currentTimeMillis() - start));

@@ -6,6 +6,7 @@ import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
@@ -26,13 +27,13 @@ public class TreeUtil {
 
     /**
      * 快速构建树形结构
-     *
+     * <p>
      * 借助引用，快速构建树形结构，避免了递归的消耗
      *
      * @param nodes 构建源数据
      * @return 树形结构数据集
      */
-    public static <A, T extends TreeBase<A>> SortedSet<T> createTree(Collection<T> nodes, A rootValue, String splitChar, Set<Field> fullFieldSet) {
+    public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> nodes, A rootValue, String splitChar, Set<Field> fullFieldSet) {
         Map<A, List<T>> children = nodes.parallelStream().filter(node -> !Objects.equals(node.getParentId(), rootValue)).collect(Collectors.groupingBy(TreeBase::getParentId));
 
         nodes.parallelStream().forEach(node -> {
@@ -45,15 +46,15 @@ public class TreeUtil {
 
         //计算full属性值，借助ParentWrapper包裹，通过引用实现快速计算
         if (fullFieldSet != null && !fullFieldSet.isEmpty()) {
-            List<ParentWrapper<A>> wrapperList = nodes.stream().map(ParentWrapper::new).collect(Collectors.toList());
-            Map<A, ParentWrapper<A>> map = Maps.newConcurrentMap();
+            List<ParentWrapper<A, T>> wrapperList = nodes.stream().map(ParentWrapper::new).collect(Collectors.toList());
+            Map<A, ParentWrapper<A, T>> map = Maps.newConcurrentMap();
             wrapperList.parallelStream().forEach(a -> map.put(a.getCurrent().getId(), a));
             wrapperList.parallelStream().forEach(a -> {
                 Object parentId = a.getCurrent().getParentId();
                 if (parentId == null) {
                     return;
                 }
-                ParentWrapper<A> parentWrapper = map.get(parentId);
+                ParentWrapper<A, T> parentWrapper = map.get(parentId);
                 if (parentWrapper == null) {
                     return;
                 }
@@ -73,7 +74,7 @@ public class TreeUtil {
         return nodes.parallelStream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(Sets::newTreeSet));
     }
 
-    public static <A, T extends TreeBase<A>> SortedSet<T> createTree(Collection<T> list, A rootValue, String splitChar, String... fullFields) {
+    public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> list, A rootValue, String splitChar, String... fullFields) {
         if (!list.isEmpty()) {
             T entity = list.stream().findAny().get();
             Class<T> tClass = (Class<T>) entity.getClass();
@@ -89,7 +90,7 @@ public class TreeUtil {
         return new TreeSet<>();
     }
 
-    public static <A, T extends TreeBase<A>> SortedSet<T> createTree(Collection<T> list, A rootValue) {
+    public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> list, A rootValue) {
         return createTree(list, rootValue, Constant.RegularAbout.SPOT);
     }
 }

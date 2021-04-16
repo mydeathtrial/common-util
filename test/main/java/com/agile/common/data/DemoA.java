@@ -7,12 +7,14 @@ import lombok.Setter;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
@@ -21,6 +23,7 @@ import java.util.TreeSet;
 @Setter
 @Getter
 public class DemoA implements Serializable {
+
     public String attr_String1;
     private String attrString2;
     private int attrInt;

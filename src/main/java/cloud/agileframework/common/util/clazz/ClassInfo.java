@@ -5,9 +5,10 @@ import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.commons.lang3.reflect.MethodUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
-import sun.reflect.generics.reflectiveObjects.TypeVariableImpl;
+import org.apache.poi.util.GenericRecordUtil;
 import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.MethodRepository;
 
@@ -51,63 +52,81 @@ public class ClassInfo<T> {
 
     public ClassInfo(Type type) {
 
-        if (type instanceof ParameterizedTypeImpl) {
-            this.clazz = (Class<T>) ((ParameterizedTypeImpl) type).getRawType();
+        if (type instanceof ParameterizedType) {
+            Type rawType = ((ParameterizedType) type).getRawType();
+            if(!(rawType instanceof Class)){
+                throw new IllegalArgumentException(type + "Unable to get complete class information");
+            }
+            this.clazz = (Class<T>) rawType;
         } else if (type instanceof Class) {
             this.clazz = (Class<T>) type;
         } else {
-            this.clazz = null;
+            throw new IllegalArgumentException(type + "Unable to get complete class information");
         }
         getTypeParameterName(type);
     }
 
+    /**
+     * 处理参数化类型
+     * @param currentType 要处理的类型
+     */
     private void getTypeParameterName(Type currentType) {
-        Class<?> clazz = null;
-        if (currentType instanceof ParameterizedTypeImpl) {
-            clazz = ((ParameterizedTypeImpl) currentType).getRawType();
-        } else if (currentType instanceof Class) {
-            clazz = (Class<?>) currentType;
-        }
-        Class<?> superClass = clazz.getSuperclass();
-
-        if (superClass == Object.class) {
+        if (currentType instanceof ParameterizedType) {
+            Type rawType = ((ParameterizedType) currentType).getRawType();
+            getTypeParameterName(rawType);
             return;
         }
+        if(currentType == Object.class){
+            return;
+        }
+        if (currentType instanceof Class) {
+            Type supper = ((Class<?>) currentType).getGenericSuperclass();
+            getTypeParameterName(supper);
+            if (supper instanceof ParameterizedType) {
+                final Class<?> superclass = ((Class<?>) currentType).getSuperclass();
+                //参数化泛型
+                TypeVariable<? extends Class<?>>[] superClassTypeParameters = superclass.getTypeParameters();
+                //具体参数化类
+                Type[] typeParameters = ((ParameterizedType) supper).getActualTypeArguments();
 
-        getTypeParameterName(superClass);
-
-        Type supper = clazz.getGenericSuperclass();
-        if (supper instanceof ParameterizedTypeImpl) {
-            TypeVariable<? extends Class<?>>[] superClassTypeParameters = superClass.getTypeParameters();
-
-            Type[] typeParameters = ((ParameterizedTypeImpl) supper).getActualTypeArguments();
-
-            for (int i = 0; i < superClassTypeParameters.length; i++) {
-                final TypeVariable<? extends Class<?>> key = superClassTypeParameters[i];
-                Type value = typeParameters[i];
-                if (value instanceof TypeVariableImpl) {
-                    value = typeVariableClassMap.get(((TypeVariableImpl<?>) value).getName());
+                for (int i = 0; i < superClassTypeParameters.length; i++) {
+                    final TypeVariable<? extends Class<?>> key = superClassTypeParameters[i];
+                    Type value = typeParameters[i];
+                    if (value instanceof TypeVariable) {
+                        value = typeVariableClassMap.get(((TypeVariable<?>) value).getName());
+                    }
+                    if (value == null) {
+                        continue;
+                    }
+                    typeVariableClassMap.put(key.getName(), value);
                 }
-                if (value == null) {
-                    continue;
-                }
-                typeVariableClassMap.put(key.getName(), value);
             }
         }
-
-
     }
 
+    /**
+     * 取类的缓存信息
+     * @param type 类型
+     * @param <A> 泛型
+     * @return ClassInfo
+     */
     public static <A extends Type> ClassInfo<A> getCache(A type) {
         ClassInfo<?> target = CACHE.get(type.toString());
         if (target == null) {
-            target = new ClassInfo<>((Class<A>) type);
+            target = new ClassInfo<>(type);
             CACHE.put(type.toString(), target);
         }
         return (ClassInfo<A>) target;
     }
 
+    /**
+     * 获取所有具备指定注解的属性集合
+     * @param annotationClass 注解类
+     * @param <A> 泛型
+     * @return ClassUtil.Target集合
+     */
     public <A extends Annotation> Set<ClassUtil.Target<A>> getAllFieldAnnotation(Class<A> annotationClass) {
+
         Set<ClassUtil.Target<?>> set = null;
         if (fieldAnnotations != null) {
             set = fieldAnnotations.get(annotationClass);
@@ -179,7 +198,21 @@ public class ClassInfo<T> {
         if (constructor == null) {
             try {
                 if (parameterTypes.length > 0) {
-                    constructor = clazz.getConstructor(parameterTypes);
+                    constructor = (Constructor<T>) Arrays.stream(clazz.getConstructors())
+                            .filter(c -> c.getParameterCount() == parameterTypes.length)
+                            .filter(c -> {
+                                Class<?>[] ps = c.getParameterTypes();
+                                for (int i = 0; i < ps.length; i++) {
+                                    Class<?> p = ps[i];
+                                    boolean same = ClassUtil.isAssignableFrom(p, parameterTypes[i]);
+                                    if (!same) {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            })
+                            .findFirst()
+                            .orElse(null);
                 } else {
                     constructor = clazz.getConstructor();
                 }
@@ -255,21 +288,26 @@ public class ClassInfo<T> {
             return;
         }
         final Type genericType = targetField.getGenericType();
-        if (genericType instanceof TypeVariableImpl) {
-            try {
-                Type value = switchParseType(genericType);
-                final Field genericTypeField = ClassUtil.getField(FieldRepository.class, "genericType");
-                genericTypeField.setAccessible(true);
-                ObjectUtil.setValue(genericInfo, genericTypeField, value);
+        try {
+            Type value = switchParseType(genericType);
+            final Field genericTypeField = ClassUtil.getField(FieldRepository.class, "genericType");
+            genericTypeField.setAccessible(true);
+            ObjectUtil.setValue(genericInfo, genericTypeField, value);
 
-                final Field typeField = ClassUtil.getField(Field.class, "type");
-                typeField.setAccessible(true);
-                ObjectUtil.setValue(targetField, typeField, value);
-            }catch (Exception ignored){}
+            final Field typeField = ClassUtil.getField(Field.class, "type");
+            typeField.setAccessible(true);
+            ObjectUtil.setValue(targetField, typeField, value);
+        } catch (Exception ignored) {
         }
     }
 
-    private Type parseType(TypeVariable<?> typeVariable){
+    /**
+     * 泛型
+     *
+     * @param typeVariable 泛型
+     * @return
+     */
+    private Type parseType(TypeVariable<?> typeVariable) {
         final Type value = typeVariableClassMap.get(typeVariable.getName());
         if (value == null) {
             return typeVariable;
@@ -277,25 +315,42 @@ public class ClassInfo<T> {
         return value;
     }
 
-    private Type parseType(ParameterizedType parameterizedType){
+    /**
+     * 参数化类型
+     *
+     * @param parameterizedType 参数化类型
+     * @return
+     */
+    private Type parseType(ParameterizedType parameterizedType) {
         Type[] upperBounds = Arrays.stream(parameterizedType.getActualTypeArguments())
                 .map(this::switchParseType)
                 .toArray(Type[]::new);
-        return TypeUtils.parameterizeWithOwner(parameterizedType.getOwnerType(), (Class<?>) parameterizedType.getRawType(),upperBounds);
+        return TypeUtils.parameterizeWithOwner(parameterizedType.getOwnerType(), (Class<?>) parameterizedType.getRawType(), upperBounds);
     }
 
-    private Type parseType(GenericArrayType parameterizedType){
+    /**
+     * 泛型数组
+     *
+     * @param parameterizedType 泛型数组
+     * @return
+     */
+    private Type parseType(GenericArrayType parameterizedType) {
         return switchParseType(parameterizedType.getGenericComponentType());
     }
 
-
-    private Type parseType(WildcardType wildcardType){
+    /**
+     * 通配符类型
+     *
+     * @param wildcardType 通配符类型
+     * @return
+     */
+    private Type parseType(WildcardType wildcardType) {
         Type[] upperBounds = Arrays.stream(wildcardType.getUpperBounds())
                 .map(this::switchParseType)
                 .toArray(Type[]::new);
 
 
-        Type[] lowerBounds =  Arrays.stream(wildcardType.getLowerBounds())
+        Type[] lowerBounds = Arrays.stream(wildcardType.getLowerBounds())
                 .map(this::switchParseType)
                 .toArray(Type[]::new);
 
@@ -303,15 +358,15 @@ public class ClassInfo<T> {
     }
 
     private Type switchParseType(Type upperBound) {
-        if (upperBound instanceof TypeVariableImpl) {
-            return parseType((TypeVariableImpl<?>) upperBound);
+        if (upperBound instanceof TypeVariable) {
+            return parseType((TypeVariable<?>) upperBound);
         } else if (upperBound instanceof WildcardType) {
             return parseType((WildcardType) upperBound);
         } else if (upperBound instanceof ParameterizedType) {
             return parseType((ParameterizedType) upperBound);
-        }else if(upperBound instanceof GenericArrayType){
+        } else if (upperBound instanceof GenericArrayType) {
             return parseType((GenericArrayType) upperBound);
-        }else{
+        } else {
             return upperBound;
         }
     }
@@ -398,8 +453,8 @@ public class ClassInfo<T> {
         }
 
         Type genericReturnType = targetMethod.getGenericReturnType();
-        if (genericReturnType instanceof TypeVariableImpl) {
-            final Type v = typeVariableClassMap.get(genericReturnType.getTypeName());
+        try {
+            final Type v = switchParseType(genericReturnType);
 
             final Field returnType = MethodRepository.class.getDeclaredField("returnType");
             returnType.setAccessible(true);
@@ -408,6 +463,7 @@ public class ClassInfo<T> {
             final Field returnTypeField = Method.class.getDeclaredField("returnType");
             returnTypeField.setAccessible(true);
             returnTypeField.set(targetMethod, v);
+        } catch (Exception ignored) {
         }
     }
 
@@ -421,7 +477,7 @@ public class ClassInfo<T> {
     private void setParameterTypes(Method targetMethod) throws NoSuchFieldException, IllegalAccessException {
         final Type[] types = Arrays.stream(targetMethod.getGenericParameterTypes())
                 .map(t -> {
-                    Type v = typeVariableClassMap.get(t.getTypeName());
+                    Type v = switchParseType(t);
                     return v == null ? t : v;
                 })
                 .collect(Collectors.toList())

@@ -19,9 +19,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import sun.reflect.generics.reflectiveObjects.WildcardTypeImpl;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -51,7 +52,6 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author 佟盟
@@ -69,37 +69,12 @@ public class ObjectUtil extends ObjectUtils {
         return to(from, toClass, false);
     }
 
-    /**
-     * 对象深度转换工具
-     * <p>
-     * 1、不同pojo类型数据之间转换
-     * 2、不同容器类型数据之间转换，支持不同内部泛型类转换，如List<A>转HashSet<B>,HashMap<K,V>转LinkedHashMap<K1,V2>
-     * 3、Map与pojo类型数据转换，并支持驼峰式与下划线式属性间的模糊匹配
-     * 4、逗号分隔字符串与Collection、Array之间转换，如"str1,str2"转["str1","str2"]，且容器元素同样支持转换如”1,2,3“可转List<Long>等，同样支持json字符串解析
-     * 5、日期字符串与日期Date类型转换，其不需要提供format模板，而是根据字符串内容动态分析准确日期，避免如pojo类型字符串与Date属性转换过程中提供额外的format参数
-     * 6、字符串与枚举之间转换
-     * 7、基本类型数据转换
-     * 8、超类属性转换
-     * 9、以上转换均支持各类型间的多层嵌套转换
-     *
-     * @param from    被转换对象
-     * @param toClass 转换后的对象类型，利用匿名内部类方式传递该类型，以解决容器类泛型类解析问题
-     * @param alias   是否启用Alias注解解析
-     * @param <T>     转换后的对象类型泛型
-     * @return 转换后的toClass类型对象
-     */
     public static <T> T to(Object from, TypeReference<T> toClass, boolean alias) {
         T result;
         if (from == null) {
             return null;
         }
-        if (toClass.isAssignableFrom(WildcardTypeImpl.class)) {
-            try {
-                result = (T) from;
-            } catch (Exception e) {
-                result = null;
-            }
-        } else if (toClass.isEnum()) {
+        if (toClass.isEnum()) {
             result = toEnum(from, toClass);
         } else if (toClass.isArray()) {
             result = toArray(from, toClass);
@@ -107,9 +82,12 @@ public class ObjectUtil extends ObjectUtils {
             result = toCollection(from, toClass);
         } else if (toClass.isExtendsFrom(Map.class)) {
             result = toMap(from, toClass);
-        } else if (toClass.isWrapOrPrimitive() || toClass.getWrapperClass() == String.class) {
+        } else if (toClass.isWrapOrPrimitive()) {
             // 基本类型转换
-            result = (T) to(from, toClass.getWrapperClass());
+            result = to(from, (Class<T>) toClass.extractWrapOrPrimitive());
+        } else if (toClass.isExtendsFrom(String.class)) {
+            // 基本类型转换
+            result = (T) String.valueOf(from);
         } else if (toClass.isExtendsFrom(Date.class)) {
             if (from instanceof Date) {
                 result = (T) from;
@@ -128,7 +106,7 @@ public class ObjectUtil extends ObjectUtils {
         } else {
             // POJO类型转换
             try {
-                result = toPOJO(from, (Class<T>) toClass.getType(), alias);
+                result = toPOJO(from, (Class<? extends T>) ClassUtil.getWrapper(toClass.getType()), alias);
             } catch (Exception e) {
                 result = null;
             }
@@ -187,47 +165,26 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换后的对象
      */
     private static <T> T toEnum(Object from, TypeReference<T> toClass) {
+        T result = null;
         if (toClass.isEnum()) {
-            try {
-                Class<?> enumClass = toClass.getWrapperClass();
+            Class<Enum> enumClass = toClass.extractEnum();
 
-                String sourceName;
+            String sourceName;
 
-                if (from.getClass().isEnum()) {
-                    sourceName = ((Enum) from).name();
-                } else {
-                    sourceName = from.toString();
-                }
-                Method values = enumClass.getMethod("values");
-                if (!values.isAccessible()) {
-                    values.setAccessible(true);
-                }
+            if (from.getClass().isEnum()) {
+                sourceName = ((Enum<?>) from).name();
+            } else {
+                sourceName = from.toString();
+            }
 
-                Enum<?>[] v = (Enum<?>[]) values.invoke(null);
+            Map<String, Enum> map = EnumUtils.getEnumMap(enumClass);
+            String targetName = StringUtil.vagueMatches(sourceName, map.keySet());
 
-                List<String> nameList = Stream.of(v).map(Enum::name).collect(Collectors.toList());
-                String targetName = StringUtil.vagueMatches(sourceName, nameList);
-
-                if (targetName != null) {
-                    Method valueOf = enumClass.getMethod("valueOf", String.class);
-                    if (!valueOf.isAccessible()) {
-                        valueOf.setAccessible(true);
-                    }
-                    return (T) valueOf.invoke(null, targetName);
-                } else {
-                    HashMap<String, Enum<?>> map = Maps.newHashMapWithExpectedSize(v.length);
-                    nameList = Stream.of(v)
-                            .map(node -> map.put(node.toString(), node))
-                            .filter(Objects::nonNull)
-                            .map(Enum::toString)
-                            .collect(Collectors.toList());
-                    targetName = StringUtil.vagueMatches(sourceName, nameList);
-                    return (T) map.get(targetName);
-                }
-            } catch (Exception ignored) {
+            if (targetName != null) {
+                result = (T) EnumUtils.getEnum(enumClass, targetName);
             }
         }
-        return null;
+        return result;
     }
 
     /**
@@ -239,9 +196,13 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换后的对象
      */
     private static <T> T toArray(Object from, TypeReference<T> toClass) {
+        if (!toClass.isArray()) {
+            return null;
+        }
         Object array = null;
 
-        Class<?> innerClass = toClass.getWrapperClass().getComponentType();
+        Class<?> innerClass = toClass.extractArray();
+
         if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
             array = Array.newInstance(innerClass, ((Collection<?>) from).size());
             int i = 0;
@@ -280,7 +241,8 @@ public class ObjectUtil extends ObjectUtils {
      */
     private static <T> T toMap(Object from, TypeReference<T> toClass) {
         if (toClass.isExtendsFrom(Map.class)) {
-            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class) || from.getClass().isArray()) {
+            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)
+                    || from.getClass().isArray()) {
                 return null;
             }
             Map<?, ?> map = MapUtil.parse(from);
@@ -298,58 +260,60 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换结果
      */
     private static <T> T toCollection(Object from, TypeReference<T> toClass) {
-        if (toClass.isExtendsFrom(Collection.class)) {
+        if (!toClass.isExtendsFrom(Collection.class)) {
+            return null;
+        }
+        if (from instanceof String) {
+            try {
+                JSONArray array = JSON.parseArray((String) from);
+                return toCollection(array, toClass);
+            } catch (Exception e) {
+                String[] strings = ((String) from).split(",");
+                return toCollection(strings, toClass);
+            }
+        }
+        if (!ClassUtil.isExtendsFrom(from.getClass(), Collection.class) && !from.getClass().isArray()) {
+            return null;
+        }
 
-            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class) || from.getClass().isArray()) {
-                Type nodeType = toClass.getParameterizedType(0);
-                if (nodeType == null) {
-                    nodeType = Object.class;
-                }
+        Class<?> wrapperClass = ClassUtil.getWrapper(toClass.getType());
+        if (wrapperClass == null) {
+            return null;
+        }
 
-                Collection<?> collection;
-                final Class<?> wrapperClass = toClass.getWrapperClass();
-                if (wrapperClass.isInterface()) {
-                    if (wrapperClass == Queue.class) {
-                        collection = new ArrayDeque<>();
-                    } else if (wrapperClass == BlockingDeque.class) {
-                        collection = new LinkedBlockingDeque<>();
-                    } else if (wrapperClass == BlockingQueue.class) {
-                        collection = new LinkedBlockingQueue<>();
-                    } else if (wrapperClass == Set.class) {
-                        collection = new HashSet<>();
-                    } else if (wrapperClass == SortedSet.class) {
-                        collection = new TreeSet<>();
-                    } else {
-                        collection = new ArrayList<>();
-                    }
-                } else {
-                    collection = (Collection<?>) ClassUtil.newInstance(wrapperClass);
-                }
+        Collection<?> collection;
+        if ((wrapperClass).isInterface()) {
+            if (wrapperClass == Queue.class) {
+                collection = new ArrayDeque<>();
+            } else if (wrapperClass == BlockingDeque.class) {
+                collection = new LinkedBlockingDeque<>();
+            } else if (wrapperClass == BlockingQueue.class) {
+                collection = new LinkedBlockingQueue<>();
+            } else if (wrapperClass == Set.class) {
+                collection = new HashSet<>();
+            } else if (wrapperClass == SortedSet.class) {
+                collection = new TreeSet<>();
+            } else {
+                collection = new ArrayList<>();
+            }
+        } else {
+            collection = (Collection<?>) ClassUtil.newInstance((wrapperClass));
+        }
 
-                if (collection != null) {
-                    if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
-                        for (Object o : (Collection<?>) from) {
-                            collection.add(to(o, new TypeReference<>(nodeType)));
-                        }
-                    } else if (from.getClass().isArray()) {
-                        for (Object o : (Object[]) from) {
-                            collection.add(to(o, new TypeReference<>(nodeType)));
-                        }
-                    }
+        if (collection != null) {
+            ParameterizedType parameterizedType = (ParameterizedType) toClass.getType();
+            Type nodeType = parameterizedType.getActualTypeArguments()[0];
+            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
+                for (Object o : (Collection<?>) from) {
+                    collection.add(to(o, new TypeReference<>(nodeType)));
                 }
-                return (T) collection;
-            } else if (from instanceof String) {
-                try {
-                    JSONArray array = JSON.parseArray((String) from);
-                    return to(array, toClass);
-                } catch (Exception e) {
-                    String[] strings = ((String) from).split(",");
-                    return toCollection(strings, toClass);
+            } else if (from.getClass().isArray()) {
+                for (Object o : (Object[]) from) {
+                    collection.add(to(o, new TypeReference<>(nodeType)));
                 }
             }
         }
-
-        return null;
+        return (T) collection;
     }
 
     /**
@@ -360,7 +324,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param <T>     泛型
      * @return 转换后的POJO
      */
-    private static <T> T toPOJO(Object from, Class<? extends T> toClass, boolean alias) {
+    static <T> T toPOJO(Object from, Class<? extends T> toClass, boolean alias) {
         if (from == null) {
             return null;
         }

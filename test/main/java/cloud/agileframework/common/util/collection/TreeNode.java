@@ -12,7 +12,7 @@ import lombok.EqualsAndHashCode;
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
-public class TreeNode extends TreeBase<String> {
+public class TreeNode extends TreeBase<String, TreeNode> {
     private String full;
 
     public TreeNode() {

@@ -301,8 +301,13 @@ public class ObjectUtil extends ObjectUtils {
         }
 
         if (collection != null) {
-            ParameterizedType parameterizedType = (ParameterizedType) toClass.getType();
-            Type nodeType = parameterizedType.getActualTypeArguments()[0];
+            Type type = toClass.getType();
+            Type nodeType = Object.class;
+            if(type instanceof ParameterizedType){
+                ParameterizedType parameterizedType = (ParameterizedType)type;
+                nodeType = parameterizedType.getActualTypeArguments()[0];
+            }
+
             if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
                 for (Object o : (Collection<?>) from) {
                     collection.add(to(o, new TypeReference<>(nodeType)));

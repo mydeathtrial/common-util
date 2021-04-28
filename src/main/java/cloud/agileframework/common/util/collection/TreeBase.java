@@ -22,6 +22,7 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
     private SortedSet<A> children = new TreeSet<>();
 
     public <B extends A> void setChildren(SortedSet<B> children) {
+        this.children.clear();
         this.children.addAll(children);
     }
 
@@ -40,7 +41,9 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
             return false;
         }
         TreeBase<?, ?> treeBase = (TreeBase<?, ?>) o;
-        return Objects.equals(getId(), treeBase.getId()) && Objects.equals(getParentId(), treeBase.getParentId()) && Objects.equals(getSort(), treeBase.getSort());
+        return Objects.equals(getId(), treeBase.getId())
+                && Objects.equals(getParentId(), treeBase.getParentId())
+                && Objects.equals(getSort(), treeBase.getSort());
     }
 
     @Override
@@ -56,6 +59,9 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
      */
     @Override
     public int compareTo(TreeBase<I, A> o) {
+        if (Objects.equals(this, o)) {
+            return 0;
+        }
         if (o == null) {
             return 1;
         }

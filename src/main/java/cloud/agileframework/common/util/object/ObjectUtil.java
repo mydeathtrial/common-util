@@ -31,6 +31,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.sql.Timestamp;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -90,7 +91,13 @@ public class ObjectUtil extends ObjectUtils {
             result = (T) String.valueOf(from);
         } else if (toClass.isExtendsFrom(Date.class)) {
             if (from instanceof Date) {
-                result = (T) from;
+                if (toClass.getType() == Timestamp.class) {
+                    result = (T) (new Timestamp(((Date) from).getTime()));
+                } else if (toClass.getType() == java.sql.Date.class) {
+                    result = (T) (new java.sql.Date(((Date) from).getTime()));
+                } else {
+                    result = (T) new Date(((Date) from).getTime());
+                }
             } else {
                 // 日期类型转换
                 GregorianCalendar calendar = DateUtil.parse(from.toString());
@@ -303,8 +310,8 @@ public class ObjectUtil extends ObjectUtils {
         if (collection != null) {
             Type type = toClass.getType();
             Type nodeType = Object.class;
-            if(type instanceof ParameterizedType){
-                ParameterizedType parameterizedType = (ParameterizedType)type;
+            if (type instanceof ParameterizedType) {
+                ParameterizedType parameterizedType = (ParameterizedType) type;
                 nodeType = parameterizedType.getActualTypeArguments()[0];
             }
 

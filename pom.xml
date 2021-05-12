@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <name>Agile公共工具集</name>
+    <name>common util</name>
     <groupId>cloud.agileframework</groupId>
     <artifactId>common-util</artifactId>
     <version>2.0.11</version>
@@ -77,7 +77,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>1.2.73</version>
+            <version>1.2.76</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

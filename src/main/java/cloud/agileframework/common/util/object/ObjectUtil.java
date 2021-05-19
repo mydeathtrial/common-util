@@ -1,6 +1,7 @@
 package cloud.agileframework.common.util.object;
 
 import cloud.agileframework.common.annotation.Alias;
+import cloud.agileframework.common.annotation.Remark;
 import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.clazz.ClassInfo;
 import cloud.agileframework.common.util.clazz.ClassUtil;
@@ -15,9 +16,8 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.ObjectUtils;
@@ -53,6 +53,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author 佟盟
@@ -1025,6 +1026,9 @@ public class ObjectUtil extends ObjectUtils {
      * @return 属性值
      */
     public static Object getFieldValue(Object o, String fieldName) {
+        if (o == null) {
+            return null;
+        }
         Field field = ClassUtil.getField(o.getClass(), fieldName);
         if (field == null) {
             return null;
@@ -1418,45 +1422,233 @@ public class ObjectUtil extends ObjectUtils {
      * @param target          目标对象
      * @param excludeProperty 排除的属性
      * @return 值不相同的属性列表
-     * @throws IllegalAccessException 调用过程异常
      */
-    public static List<Different> getDifferenceProperties(Object source, Object target, String... excludeProperty) throws IllegalAccessException {
+    public static List<DifferentField> getDifferenceProperties(Object source, Object target, String... excludeProperty) {
 
-        List<Different> result = new ArrayList<>();
+        List<DifferentField> result = new ArrayList<>();
 
-        if ((!ClassUtil.compareClass(source, target) || compare(source, target) || isEmpty(source)) != isEmpty(target)) {
+        if (source == null && target == null) {
             return result;
         }
 
-        Object sourceObject = isEmpty(source) ? target : source;
-        Object targetObject = isEmpty(source) ? source : target;
-        Class<?> sourceClass = sourceObject.getClass();
-        ClassUtil.getAllField(sourceClass)
-                .parallelStream()
-                .forEach(field -> {
-                    if (excludeProperty != null && ArrayUtils.contains(excludeProperty, field.getName())) {
-                        return;
-                    }
-                    if (!field.isAccessible()) {
-                        field.setAccessible(true);
-                    }
-                    Object sourceValue;
-                    Object targetValue;
-                    try {
-                        sourceValue = field.get(sourceObject);
-                        targetValue = field.get(targetObject);
-                    } catch (IllegalAccessException e) {
-                        return;
-                    }
+        Set<Field> sourceFields = source == null ? Sets.newHashSetWithExpectedSize(0) : ClassUtil.getAllField(source.getClass());
+        Set<Field> targetFields = target == null ? Sets.newHashSetWithExpectedSize(0) : ClassUtil.getAllField(target.getClass());
 
-                    if (compare(sourceValue, targetValue)) {
-                        return;
-                    }
+        // 提取要处理比较的所有属性
+        Set<String> willResolveFieldNames = Stream.of(sourceFields, targetFields)
+                .flatMap(Collection::stream).map(Field::getName)
+                .filter(a -> !ArrayUtils.contains(excludeProperty, a))
+                .collect(Collectors.toSet());
 
-                    result.add(new Different(field.getName(), field.getType().getTypeName(), String.valueOf(targetValue), String.valueOf(sourceValue)));
-                });
+        // 属性逐个比较
+        for (String fieldName : willResolveFieldNames) {
+            DifferentField differentField = resolve(source, target, fieldName);
+            // 过滤掉相同的属性
+            if (differentField == DifferentField.EQUAL_FIELD) {
+                continue;
+            }
+            result.add(differentField);
+        }
 
         return result;
+    }
+
+    /**
+     * 比较两个对象的fieldName属性，source与target可以为不同的两种类型对象，属性不存在与属性值为空等效
+     *
+     * @param source    比较对象
+     * @param target    比较对象
+     * @param fieldName 要比较的属性名
+     * @return 差异信息
+     */
+    public static DifferentField resolve(Object source, Object target, String fieldName) {
+        DifferentField result = DifferentField.EQUAL_FIELD;
+        if (source == null && target == null) {
+            return result;
+        }
+
+        // 要比较的属性值
+        Object sourceValue = getFieldValue(source, fieldName);
+        Object targetValue = getFieldValue(target, fieldName);
+
+        if (sourceValue == null && targetValue == null) {
+            return result;
+        }
+
+        // 提取属性
+        Field sourceField = getField(source, fieldName);
+        Field targetField = getField(target, fieldName);
+
+        String remark;
+        try {
+            remark = resolveLogField(source, target, fieldName);
+        } catch (DifferentField.LogFieldIgnoreException e) {
+            // 忽略属性
+            return result;
+        }
+
+        if (source == null) {
+            // source空
+            // sourceValue空
+            // target非空
+            // targetValue非空
+            if (targetField.getType().isArray() || Collection.class.isAssignableFrom(targetField.getType())) {
+                result = new DifferentCollectionField(fieldName, remark, targetField.getType());
+                ((DifferentCollectionField) result).setAdd(to(targetValue, new TypeReference<List<Object>>() {
+                }));
+            } else {
+                result = new DifferentSimpleField(fieldName, remark, targetField.getType());
+                ((DifferentSimpleField) result).setNewValue(targetValue);
+            }
+        } else if (target == null) {
+            // source非空
+            // sourceValue非空
+            // target空
+            // targetValue空
+            if (sourceField.getType().isArray() || Collection.class.isAssignableFrom(sourceField.getType())) {
+                result = new DifferentCollectionField(fieldName, remark, sourceField.getType());
+                ((DifferentCollectionField) result).setAdd(to(sourceValue, new TypeReference<List<Object>>() {
+                }));
+            } else {
+                result = new DifferentSimpleField(fieldName, remark, sourceField.getType());
+                ((DifferentSimpleField) result).setNewValue(sourceValue);
+            }
+        } else if (targetValue == null) {
+            // source非空
+            // sourceValue非空
+            // target非空
+            // targetValue空
+            if (sourceField != null && targetField != null && (sourceField.getType().isArray() || Collection.class.isAssignableFrom(sourceField.getType()))
+                    && (targetField.getType().isArray() || Collection.class.isAssignableFrom(targetField.getType()))) {
+                result = new DifferentCollectionField(fieldName, remark, sourceField.getType());
+                ((DifferentCollectionField) result).setDel(to(sourceValue, new TypeReference<List<Object>>() {
+                }));
+            } else {
+                result = new DifferentSimpleField(fieldName, remark, sourceField.getType());
+                ((DifferentSimpleField) result).setOldValue(sourceValue);
+            }
+        } else if (sourceValue == null) {
+            // source非空
+            // sourceValue空
+            // target非空
+            // targetValue非空
+            if (sourceField != null && targetField != null && (sourceField.getType().isArray() || Collection.class.isAssignableFrom(sourceField.getType()))
+                    && (targetField.getType().isArray() || Collection.class.isAssignableFrom(targetField.getType()))) {
+                result = new DifferentCollectionField(fieldName, remark, sourceField.getType());
+                ((DifferentCollectionField) result).setAdd(to(targetValue, new TypeReference<List<Object>>() {
+                }));
+            } else {
+                result = new DifferentSimpleField(fieldName, remark, targetField.getType());
+                ((DifferentSimpleField) result).setNewValue(targetValue);
+            }
+        } else {
+            // source非空
+            // sourceValue非空
+            // target非空
+            // targetValue非空
+            if ((sourceField.getType().isArray() || Collection.class.isAssignableFrom(sourceField.getType()))
+                    && (targetField.getType().isArray() || Collection.class.isAssignableFrom(targetField.getType()))) {
+
+                List<Object> formatSourceValue = to(sourceValue, new TypeReference<List<Object>>() {
+                });
+                List<Object> formatTargetValue = to(targetValue, new TypeReference<List<Object>>() {
+                });
+
+                List<Object> add = formatTargetValue == null ? Lists.newArrayList() : formatTargetValue;
+                List<Object> del = formatSourceValue == null ? Lists.newArrayList() : formatSourceValue;
+
+                Iterator<Object> it = add.iterator();
+                while (it.hasNext()) {
+                    Object node = it.next();
+                    if (del.contains(node)) {
+                        del.remove(node);
+                        it.remove();
+                    }
+                }
+
+                if (add.equals(del)) {
+                    return result;
+                }
+                result = new DifferentCollectionField(fieldName, remark, sourceField.getType());
+                ((DifferentCollectionField) result).setAdd(add);
+                ((DifferentCollectionField) result).setDel(del);
+            } else {
+                result = new DifferentSimpleField(fieldName, remark, sourceField.getType());
+                ((DifferentSimpleField) result).setOldValue(sourceValue);
+                ((DifferentSimpleField) result).setNewValue(targetValue);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 获取对象的某个属性上的注解，包裹属性的get方法上的注解
+     *
+     * @param object          对象
+     * @param fieldName       属性名
+     * @param annotationClass 注解类型
+     * @param <A>             注解类型
+     * @return 属性或属性的get方法上的注解
+     */
+    public static <A extends Annotation> A getFieldAnnotation(Object object, String fieldName, Class<A> annotationClass) {
+        if (object == null) {
+            return null;
+        }
+        return ClassUtil.getFieldAnnotation(object.getClass(), fieldName, annotationClass);
+    }
+
+    /**
+     * 处理LogField注解
+     *
+     * @param source    被比较的两个对象的第一个对象属性
+     * @param target    被比较的两个对象的第二个对象属性
+     * @param fieldName 属性名
+     * @return 提取到的注解value值
+     * @throws DifferentField.LogFieldIgnoreException 忽略
+     */
+    private static String resolveLogField(Object source, Object target, String fieldName) throws DifferentField.LogFieldIgnoreException {
+        boolean sourceFieldIgnore = false;
+        boolean targetFieldIgnore = false;
+        StringBuilder remark = new StringBuilder();
+
+        Remark sourceLogField = getFieldAnnotation(source, fieldName, Remark.class);
+        if (sourceLogField != null && !sourceLogField.ignore()) {
+            remark.append(sourceLogField.value());
+        } else if (sourceLogField != null) {
+            sourceFieldIgnore = true;
+        }
+
+        Remark targetLogField = getFieldAnnotation(target, fieldName, Remark.class);
+        if (targetLogField != null && !targetLogField.ignore() && !targetLogField.value().equals(remark.toString())) {
+            if (remark.length() == 0) {
+                remark.append(targetLogField.value());
+            } else {
+                remark.append("(").append(targetLogField.value()).append(")");
+            }
+        } else if (targetLogField != null) {
+            targetFieldIgnore = true;
+        }
+
+        if (sourceFieldIgnore && targetFieldIgnore) {
+            throw DifferentField.LogFieldIgnoreException.LOG_FIELD_IGNORE_EXCEPTION;
+        }
+
+        return remark.length() == 0 ? null : remark.toString();
+    }
+
+    /**
+     * 提取对象的属性
+     *
+     * @param object    对象
+     * @param fieldName 属性值
+     * @return 属性
+     */
+    public static Field getField(Object object, String fieldName) {
+        if (object == null) {
+            return null;
+        }
+        return ClassUtil.getField(object.getClass(), fieldName);
     }
 
     /**
@@ -1474,39 +1666,9 @@ public class ObjectUtil extends ObjectUtils {
             if (isEmpty(target)) {
                 return false;
             }
-            try {
-                List<Different> list = getDifferenceProperties(source, target, excludeProperty);
-                if (!ObjectUtils.isEmpty(list)) {
-                    return false;
-                }
-            } catch (IllegalAccessException ignored) {
-            }
+            List<DifferentField> list = getDifferenceProperties(source, target, excludeProperty);
+            return ObjectUtils.isEmpty(list);
         }
-        return true;
-    }
-
-    /**
-     * 区别信息
-     */
-    @Data
-    @AllArgsConstructor
-    public static class Different {
-        /**
-         * 属性名
-         */
-        private final String propertyName;
-        /**
-         * 属性类型
-         */
-        private final String propertyType;
-        /**
-         * 新值
-         */
-        private final String newValue;
-        /**
-         * 旧值
-         */
-        private final String oldValue;
     }
 
     /**

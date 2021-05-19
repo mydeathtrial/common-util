@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.ClassUtils;
-import org.apache.commons.lang3.ObjectUtils;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
@@ -194,11 +193,59 @@ public class ClassUtil extends ClassUtils {
         private A annotation;
     }
 
+    /**
+     * 获取类的属性相关注解，支持通过get方法获取，以属性上的注解优先级高
+     *
+     * @param clazz           类型
+     * @param fieldName       属性名
+     * @param annotationClass 注解类型
+     * @param <A>             注解类型
+     * @return 注解
+     */
+    public static <A extends Annotation> A getFieldAnnotation(Class<?> clazz, String fieldName, Class<A> annotationClass) {
+        A result = null;
+        Field field = getField(clazz, fieldName);
+        if (field == null) {
+            return result;
+        }
+        result = field.getAnnotation(annotationClass);
+
+        Method getMethod;
+        if (result != null) {
+            return result;
+        }
+        getMethod = getMethod(clazz, "get" + StringUtil.toUpperName(fieldName));
+        if (getMethod == null && field.getType() == boolean.class) {
+            getMethod = getMethod(clazz, "is" + StringUtil.toUpperName(fieldName));
+        }
+        if (getMethod != null) {
+            result = getMethod.getAnnotation(annotationClass);
+        }
+
+        return result;
+    }
+
+    /**
+     * 取类的所有属性与注解映射关系
+     *
+     * @param clazz           类型
+     * @param annotationClass 注解类型
+     * @param <A>             注解
+     * @return 属性与注解映射信息
+     */
     public static <A extends Annotation> Set<Target<A>> getAllFieldAnnotation(Class<?> clazz, Class<A> annotationClass) {
         ClassInfo<?> classInfo = ClassInfo.getCache(clazz);
         return classInfo.getAllFieldAnnotation(annotationClass);
     }
 
+    /**
+     * 取类的所有方法与注解映射关系
+     *
+     * @param clazz           类型
+     * @param annotationClass 注解类型
+     * @param <A>             注解
+     * @return 方法与注解映射关系
+     */
     public static <A extends Annotation> Set<Target<A>> getAllMethodAnnotation(Class<?> clazz, Class<A> annotationClass) {
         ClassInfo<?> classInfo = ClassInfo.getCache(clazz);
         return classInfo.getAllMethodAnnotation(annotationClass);
@@ -223,18 +270,6 @@ public class ClassUtil extends ClassUtils {
         }
         return fieldAnnotation;
     }
-
-    /**
-     * 比较两个对象是否属于同一个类
-     *
-     * @param source 源对象
-     * @param target 目标对象
-     * @return 是否相同
-     */
-    public static Boolean compareClass(Object source, Object target) {
-        return ObjectUtils.isEmpty(source) ? ObjectUtils.isEmpty(target) : (!ObjectUtils.isEmpty(target) && source.getClass() == (target.getClass()));
-    }
-
 
     public static Constructor<Type> getConstruct(Type type, Class<?>... parameterTypes) {
         if (type instanceof ParameterizedType) {

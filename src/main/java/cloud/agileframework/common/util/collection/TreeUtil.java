@@ -34,7 +34,10 @@ public class TreeUtil {
      * @return 树形结构数据集
      */
     public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> nodes, A rootValue, String splitChar, Set<Field> fullFieldSet) {
-        Map<A, List<T>> children = nodes.parallelStream().filter(node -> !Objects.equals(node.getParentId(), rootValue)).collect(Collectors.groupingBy(TreeBase::getParentId));
+        Map<A, List<T>> children = nodes.parallelStream().filter(node -> {
+            node.getChildren().clear();
+            return !Objects.equals(node.getParentId(), rootValue);
+        }).collect(Collectors.groupingBy(TreeBase::getParentId));
 
         nodes.parallelStream().forEach(node -> {
             final List<T> child = children.get(node.getId());

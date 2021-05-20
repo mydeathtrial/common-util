@@ -25,5 +25,6 @@ public class ObjectUtilTest {
                 new O2(null, new String[]{"李磊", "张天爱"}, 12));
         System.out.println(JSONUtil.toJSONString(dif2, SerializerFeature.PrettyFormat,SerializerFeature.WriteMapNullValue));
 
+
     }
 }

@@ -17,21 +17,21 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DifferentField implements Serializable {
-    public static final DifferentField EQUAL_FIELD = new DifferentField();
+    public static final transient DifferentField EQUAL_FIELD = new DifferentField();
     /**
      * 属性名
      */
-    private String propertyName;
+    private String fieldName;
     /**
      * 备注
      */
-    private String propertyRemark;
+    private String fieldRemark;
     /**
      * 属性类型
      */
-    private Class<?> propertyType;
+    private Class<?> fieldType;
 
-    public static class LogFieldIgnoreException extends Exception{
+    public static class LogFieldIgnoreException extends Exception {
         static final LogFieldIgnoreException
                 LOG_FIELD_IGNORE_EXCEPTION = new LogFieldIgnoreException();
     }

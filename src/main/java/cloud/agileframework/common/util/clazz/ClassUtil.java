@@ -64,6 +64,9 @@ public class ClassUtil extends ClassUtils {
      */
     public static Method getMethod(Class<?> clazz, String methodName, @Nullable Class<?>... paramTypes) {
         ClassInfo<?> classInfo = ClassInfo.getCache(clazz);
+        if(paramTypes == null){
+            return classInfo.getMethod(methodName);
+        }
         return classInfo.getMethod(methodName, paramTypes);
     }
 

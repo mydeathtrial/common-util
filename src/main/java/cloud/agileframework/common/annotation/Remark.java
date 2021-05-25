@@ -25,5 +25,5 @@ public @interface Remark {
     /**
      * 是否忽略
      */
-    boolean ignore() default false;
+    boolean ignoreCompare() default true;
 }

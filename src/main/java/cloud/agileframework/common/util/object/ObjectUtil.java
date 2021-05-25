@@ -7,6 +7,7 @@ import cloud.agileframework.common.util.clazz.ClassInfo;
 import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.clazz.FieldInfo;
 import cloud.agileframework.common.util.clazz.TypeReference;
+import cloud.agileframework.common.util.collection.CollectionsUtil;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.map.MapUtil;
 import cloud.agileframework.common.util.number.NumberUtil;
@@ -148,17 +149,26 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换后的字符串
      */
     public static String toString(Object from) {
+        if(from == null){
+            return null;
+        }
         String result;
+
+        try {
+            Method toStringMethod = ClassUtil.getMethod(from.getClass(), "toString");
+            if(toStringMethod!=null && toStringMethod.getDeclaringClass() != Object.class){
+                return from.toString();
+            }
+        }catch (Exception ignored){
+        }
         if (from.getClass().isArray()) {
             result = ArrayUtils.toString(from);
         } else if (Collection.class.isAssignableFrom(from.getClass())) {
             result = ArrayUtils.toString(((Collection<?>) from).toArray());
-        } else if (Map.class.isAssignableFrom(from.getClass())) {
-            result = from.toString();
         } else if (from.getClass().isEnum()) {
             result = ((Enum<?>) from).name();
         } else {
-            result = from.toString();
+            result = Objects.toString(from, null);
         }
         return result;
     }
@@ -504,7 +514,7 @@ public class ObjectUtil extends ObjectUtils {
 
                 Set<Method> allMethod = ClassUtil.getAllMethod(objectClass);
 
-                List<Method> list = allMethod.stream()
+                List<Method> list = allMethod.parallelStream()
                         .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
                         .sorted((a, b) -> {
                             int result = b.getName().compareTo(a.getName());
@@ -881,7 +891,7 @@ public class ObjectUtil extends ObjectUtils {
             return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
         }).forEach(e -> {
             Set<String> sourceAlias = e.getValue();
-            Set<Field> set = targetMap.entrySet().stream().filter(te ->
+            Set<Field> set = targetMap.entrySet().parallelStream().filter(te ->
                     !CollectionUtils.retainAll(te.getValue(), sourceAlias).isEmpty()
             ).map(Map.Entry::getKey).collect(Collectors.toSet());
             map.put(e.getKey(), set);
@@ -901,7 +911,7 @@ public class ObjectUtil extends ObjectUtils {
         Set<ClassUtil.Target<Alias>> sourceAnnotations = ClassUtil.getAllEntityAnnotation(sourceClass, Alias.class);
 
         ClassUtil.getAllField(sourceClass).forEach(field -> {
-            ClassUtil.Target<Alias> an = sourceAnnotations.stream().filter(sourceAnnotation -> sourceAnnotation.getMember() == field).findFirst().orElse(null);
+            ClassUtil.Target<Alias> an = sourceAnnotations.parallelStream().filter(sourceAnnotation -> sourceAnnotation.getMember() == field).findFirst().orElse(null);
             Set<String> aliases;
             if (an != null) {
                 aliases = Sets.newHashSet(an.getAnnotation().value());
@@ -980,7 +990,6 @@ public class ObjectUtil extends ObjectUtils {
 
         Map<Field, Set<Field>> argumentsMap = getSameField(source, target, prefix, suffix, compare, isAlias);
         argumentsMap.entrySet()
-                .parallelStream()
                 .forEach(e -> {
                     try {
                         final Field fromField = e.getKey();
@@ -1058,14 +1067,14 @@ public class ObjectUtil extends ObjectUtils {
             String getMethodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
             if (field.getType() == Boolean.TYPE) {
                 String getMethodName2 = "is" + StringUtil.toUpperName(field.getName());
-                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
                         (method.getName().equals(getMethodName) || method.getName().equals(getMethodName2)) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
                             return method;
                         }).collect(Collectors.toList());
             } else {
-                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
                         method.getName().equals(getMethodName) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
@@ -1475,6 +1484,10 @@ public class ObjectUtil extends ObjectUtils {
             return result;
         }
 
+        if (Objects.equals(sourceValue, targetValue)) {
+            return result;
+        }
+
         // 提取属性
         Field sourceField = getField(source, fieldName);
         Field targetField = getField(target, fieldName);
@@ -1613,14 +1626,14 @@ public class ObjectUtil extends ObjectUtils {
         StringBuilder remark = new StringBuilder();
 
         Remark sourceLogField = getFieldAnnotation(source, fieldName, Remark.class);
-        if (sourceLogField != null && !sourceLogField.ignore()) {
+        if (sourceLogField != null && !sourceLogField.ignoreCompare()) {
             remark.append(sourceLogField.value());
         } else if (sourceLogField != null) {
             sourceFieldIgnore = true;
         }
 
         Remark targetLogField = getFieldAnnotation(target, fieldName, Remark.class);
-        if (targetLogField != null && !targetLogField.ignore() && !targetLogField.value().equals(remark.toString())) {
+        if (targetLogField != null && !targetLogField.ignoreCompare() && !targetLogField.value().equals(remark.toString())) {
             if (remark.length() == 0) {
                 remark.append(targetLogField.value());
             } else {

@@ -108,6 +108,7 @@ public class DateUtil {
         } else if (step.length > 1) {
 
             gregorianCalendar = new GregorianCalendar();
+            gregorianCalendar.set(Calendar.MILLISECOND, 0);
 
             boolean haveDate = false;
             for (String s : step) {

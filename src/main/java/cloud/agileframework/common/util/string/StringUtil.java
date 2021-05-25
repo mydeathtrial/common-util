@@ -3,7 +3,10 @@ package cloud.agileframework.common.util.string;
 import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.json.JSONUtil;
+import cloud.agileframework.common.util.object.ObjectUtil;
 import cloud.agileframework.common.util.pattern.PatternUtil;
+import com.alibaba.fastjson.JSON;
+import com.google.common.collect.Maps;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -193,7 +196,7 @@ public class StringUtil extends StringUtils {
     public static String parsingPlaceholder(String openToken, String closeToken, String equalToken, String text, Object args, String replaceNull) {
         if (args == null) {
             if (replaceNull != null) {
-                args = new HashMap(0);
+                args = new HashMap<String, Object>(0);
             } else {
                 return text;
             }
@@ -265,7 +268,7 @@ public class StringUtil extends StringUtils {
                             value = openToken + key + closeToken;
                         }
                     } else {
-                        value = String.valueOf(o);
+                        value = ObjectUtil.toString(o);
                     }
                     builder.append(value);
                     offset = end + closeToken.length();

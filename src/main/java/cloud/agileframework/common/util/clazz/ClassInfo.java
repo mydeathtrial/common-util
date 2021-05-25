@@ -5,10 +5,8 @@ import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.apache.commons.lang3.reflect.MethodUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.TypeUtils;
-import org.apache.poi.util.GenericRecordUtil;
 import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.MethodRepository;
 
@@ -35,6 +33,7 @@ import java.util.stream.Collectors;
  * @version 1.0
  * @since 1.0
  */
+@Slf4j
 public class ClassInfo<T> {
     private static final Map<String, ClassInfo<?>> CACHE = Maps.newConcurrentMap();
     private final Class<T> clazz;
@@ -54,7 +53,7 @@ public class ClassInfo<T> {
 
         if (type instanceof ParameterizedType) {
             Type rawType = ((ParameterizedType) type).getRawType();
-            if(!(rawType instanceof Class)){
+            if (!(rawType instanceof Class)) {
                 throw new IllegalArgumentException(type + "Unable to get complete class information");
             }
             this.clazz = (Class<T>) rawType;
@@ -68,6 +67,7 @@ public class ClassInfo<T> {
 
     /**
      * 处理参数化类型
+     *
      * @param currentType 要处理的类型
      */
     private void getTypeParameterName(Type currentType) {
@@ -76,7 +76,7 @@ public class ClassInfo<T> {
             getTypeParameterName(rawType);
             return;
         }
-        if(currentType == Object.class){
+        if (currentType == Object.class) {
             return;
         }
         if (currentType instanceof Class) {
@@ -106,8 +106,9 @@ public class ClassInfo<T> {
 
     /**
      * 取类的缓存信息
+     *
      * @param type 类型
-     * @param <A> 泛型
+     * @param <A>  泛型
      * @return ClassInfo
      */
     public static <A extends Type> ClassInfo<A> getCache(A type) {
@@ -121,8 +122,9 @@ public class ClassInfo<T> {
 
     /**
      * 获取所有具备指定注解的属性集合
+     *
      * @param annotationClass 注解类
-     * @param <A> 泛型
+     * @param <A>             泛型
      * @return ClassUtil.Target集合
      */
     public <A extends Annotation> Set<ClassUtil.Target<A>> getAllFieldAnnotation(Class<A> annotationClass) {
@@ -134,7 +136,7 @@ public class ClassInfo<T> {
 
         if (set == null) {
             Set<Field> fields = getAllField();
-            set = Sets.newHashSetWithExpectedSize(fields.size());
+            set = Sets.newConcurrentHashSet();
 
             for (Field field : fields) {
                 A annotation = field.getAnnotation(annotationClass);
@@ -143,7 +145,7 @@ public class ClassInfo<T> {
                 }
             }
             if (fieldAnnotations == null) {
-                fieldAnnotations = Maps.newHashMap();
+                fieldAnnotations = Maps.newConcurrentMap();
             }
             fieldAnnotations.put(annotationClass, set);
         }
@@ -159,7 +161,7 @@ public class ClassInfo<T> {
         }
         if (set == null) {
             Set<Method> methods = getAllMethod();
-            set = Sets.newHashSetWithExpectedSize(methods.size());
+            set = Sets.newConcurrentHashSet();
             for (Method method : methods) {
                 A annotation = method.getAnnotation(annotationClass);
                 if (annotation != null) {
@@ -167,7 +169,7 @@ public class ClassInfo<T> {
                 }
             }
             if (methodAnnotations == null) {
-                methodAnnotations = Maps.newHashMap();
+                methodAnnotations = Maps.newConcurrentMap();
             }
             methodAnnotations.put(annotationClass, set);
         }
@@ -220,7 +222,7 @@ public class ClassInfo<T> {
             } catch (NoSuchMethodException ignored) {
             }
             if (constructors == null) {
-                constructors = Maps.newHashMap();
+                constructors = Maps.newConcurrentMap();
             }
             constructors.put(cacheKey, constructor);
         }
@@ -235,7 +237,7 @@ public class ClassInfo<T> {
 
         if (targetField == null) {
             Set<Field> fields = getAllField();
-            Map<String, Field> targetFields = Maps.newHashMap();
+            Map<String, Field> targetFields = Maps.newConcurrentMap();
             String targetFieldName = StringUtil.camelToMatchesRegex(key);
             for (Field field : fields) {
                 if (PatternUtil.matches(targetFieldName, field.getName(), Pattern.CASE_INSENSITIVE)) {
@@ -256,7 +258,7 @@ public class ClassInfo<T> {
                     targetField.setAccessible(true);
                 }
                 if (fieldMap == null) {
-                    fieldMap = Maps.newHashMap();
+                    fieldMap = Maps.newConcurrentMap();
                 }
                 fieldMap.put(key, targetField);
             }
@@ -381,34 +383,28 @@ public class ClassInfo<T> {
         if (targetMethod != null) {
             return targetMethod;
         }
-        if (paramTypes != null) {
-            try {
-                targetMethod = clazz.getMethod(methodName, paramTypes);
-            } catch (NoSuchMethodException ex) {
-                throw new IllegalStateException("Expected method not found: " + ex);
+        Set<Method> candidates = new HashSet<>(1);
+        Method[] methods = clazz.getMethods();
+        for (Method method : methods) {
+            if (methodName.equals(method.getName()) && Arrays.equals(method.getParameterTypes(),paramTypes)) {
+                candidates.add(method);
             }
+        }
+        if (candidates.size() == 1) {
+            targetMethod = candidates.iterator().next();
+        } else if (candidates.isEmpty()) {
+            log.debug("Expected method not found: " + clazz.getName() + '.' + methodName);
+            return null;
         } else {
-            Set<Method> candidates = new HashSet<>(1);
-            Method[] methods = clazz.getMethods();
-            for (Method method : methods) {
-                if (methodName.equals(method.getName())) {
-                    candidates.add(method);
-                }
-            }
-            if (candidates.size() == 1) {
-                targetMethod = candidates.iterator().next();
-            } else if (candidates.isEmpty()) {
-                throw new IllegalStateException("Expected method not found: " + clazz.getName() + '.' + methodName);
-            } else {
-                throw new IllegalStateException("No unique method found: " + clazz.getName() + '.' + methodName);
-            }
+            log.debug("No unique method found: " + clazz.getName() + '.' + methodName);
+            return null;
         }
         if (!targetMethod.isAccessible()) {
             targetMethod.setAccessible(true);
         }
 
         if (methodMap == null) {
-            methodMap = Maps.newHashMap();
+            methodMap = Maps.newConcurrentMap();
         }
 
         methodMap.put(cacheKey, targetMethod);

@@ -43,7 +43,7 @@ public class StringUtilTest {
                     "        },\n" +
                     "        {\n" +
                     "            \"name\": \"SoSo\",\n" +
-                    "            \"url\": ${tudou$}\n" +
+                    "            \"url\": ${tudou}\n" +
                     "        }\n" +
                     "    ]\n" +
                     "}";
@@ -54,7 +54,7 @@ public class StringUtilTest {
 
             HashMap<Object, Object> map = Maps.newHashMap();
 //            map.put("tudou", Lists.newArrayList("1","2"));
-            map.put("tudou", JSON.toJSON(dif2));
-            System.out.println(StringUtil.parsingPlaceholder("${","$}",tem,map));
+            map.put("tudou", JSON.toJSONString(2));
+            System.out.println(StringUtil.parsingPlaceholder("${","}",tem,map));
     }
 }

@@ -18,14 +18,18 @@ import java.util.List;
 public class ObjectUtilTest {
     @Test
     public void compare(){
-        List<DifferentField> dif = ObjectUtil.getDifferenceProperties(new O1("tudou", 12, Lists.newArrayList("李磊", "张娜拉")),
-                new O1("tudou", 11, Lists.newArrayList("李磊", "张天爱")));
+        final O1 source = new O1("tudou", 12, Lists.newArrayList("李磊", "张娜拉"));
+
+        final O1 target = new O1("tudou", 11, Lists.newArrayList("李磊", "张天爱"));
+
+        target.setO1(source);
+        final O2 target1 = new O2(null, new String[]{"李磊", "张天爱"}, 12);
+
+        List<DifferentField> dif = ObjectUtil.getDifferenceProperties(source,
+                target);
         System.out.println(JSON.toJSONString(dif));
 
-
-        List<DifferentField> dif2 = ObjectUtil.getDifferenceProperties(
-                new O1("tudou", 12, Lists.newArrayList("李磊", "张娜拉")),
-                new O2(null, new String[]{"李磊", "张天爱"}, 12));
+        List<DifferentField> dif2 = ObjectUtil.getDifferenceProperties(source, target1);
         System.out.println(JSONUtil.toJSONString(dif2, SerializerFeature.PrettyFormat,SerializerFeature.WriteMapNullValue));
     }
 

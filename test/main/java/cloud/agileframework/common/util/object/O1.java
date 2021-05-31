@@ -1,5 +1,6 @@
 package cloud.agileframework.common.util.object;
 
+import cloud.agileframework.common.annotation.CompareField;
 import cloud.agileframework.common.annotation.Remark;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,8 +19,17 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class O1 {
-    @Remark("姓名")
+    @Remark(value = "姓名",ignoreCompare = false)
     private String name;
     private int age;
     private List<String> friends;
+    @CompareField
+    @Remark(value = "引用",ignoreCompare = false)
+    private O1 o1;
+
+    public O1(String name, int age, List<String> friends) {
+        this.name = name;
+        this.age = age;
+        this.friends = friends;
+    }
 }

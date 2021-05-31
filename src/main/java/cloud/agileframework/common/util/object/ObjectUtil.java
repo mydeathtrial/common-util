@@ -1,13 +1,13 @@
 package cloud.agileframework.common.util.object;
 
 import cloud.agileframework.common.annotation.Alias;
+import cloud.agileframework.common.annotation.CompareField;
 import cloud.agileframework.common.annotation.Remark;
 import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.clazz.ClassInfo;
 import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.clazz.FieldInfo;
 import cloud.agileframework.common.util.clazz.TypeReference;
-import cloud.agileframework.common.util.collection.CollectionsUtil;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.map.MapUtil;
 import cloud.agileframework.common.util.number.NumberUtil;
@@ -149,17 +149,17 @@ public class ObjectUtil extends ObjectUtils {
      * @return 转换后的字符串
      */
     public static String toString(Object from) {
-        if(from == null){
+        if (from == null) {
             return null;
         }
         String result;
 
         try {
             Method toStringMethod = ClassUtil.getMethod(from.getClass(), "toString");
-            if(toStringMethod!=null && toStringMethod.getDeclaringClass() != Object.class){
+            if (toStringMethod != null && toStringMethod.getDeclaringClass() != Object.class) {
                 return from.toString();
             }
-        }catch (Exception ignored){
+        } catch (Exception ignored) {
         }
         if (from.getClass().isArray()) {
             result = ArrayUtils.toString(from);
@@ -1456,6 +1456,10 @@ public class ObjectUtil extends ObjectUtils {
             if (differentField == DifferentField.EQUAL_FIELD) {
                 continue;
             }
+            if (differentField instanceof DifferentRefField) {
+                result.addAll(((DifferentRefField) differentField).extractRef());
+                continue;
+            }
             result.add(differentField);
         }
 
@@ -1498,6 +1502,16 @@ public class ObjectUtil extends ObjectUtils {
         } catch (DifferentField.LogFieldIgnoreException e) {
             // 忽略属性
             return result;
+        }
+
+        // 判断引用类型属性比较
+        CompareField sourceCompareField = ObjectUtil.getFieldAnnotation(source, fieldName, CompareField.class);
+        CompareField targetCompareField = ObjectUtil.getFieldAnnotation(target, fieldName, CompareField.class);
+        if (sourceCompareField != null || targetCompareField != null) {
+            List<DifferentField> ref = getDifferenceProperties(sourceValue, targetValue);
+            return new DifferentRefField(fieldName, remark, Object.class,
+                    ref,sourceCompareField == null ? targetCompareField.ignoreParentRemark() : sourceCompareField.ignoreParentRemark(),
+                    sourceCompareField == null ? targetCompareField.ignoreParentName() : sourceCompareField.ignoreParentName());
         }
 
         if (source == null) {
@@ -1647,7 +1661,7 @@ public class ObjectUtil extends ObjectUtils {
             throw DifferentField.LogFieldIgnoreException.LOG_FIELD_IGNORE_EXCEPTION;
         }
 
-        return remark.length() == 0 ? null : remark.toString();
+        return remark.length() == 0 ? fieldName : remark.toString();
     }
 
     /**

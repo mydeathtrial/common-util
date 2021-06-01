@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * @author 佟盟
@@ -26,18 +27,31 @@ public class ObjectUtilTest {
      * 测试Map转对象
      */
     @Test
-    public void mapToObject() {
+    public void objectToMap1() {
+
+
+        Map<String, Object> data = DemoA.testData();
+        DemoA a = ObjectUtil.to(data, new TypeReference<DemoA>() {
+        });
         long start = System.currentTimeMillis();
-        for(int i=0;i<10000;i++){
-            ObjectUtil.to(DemoA.testData(), new TypeReference<DemoA>() {
+        IntStream.range(0,20).forEach(i->{
+            ObjectUtil.to(data, new TypeReference<DemoA>() {
             });
-        }
-        System.out.println(Duration.ofMillis(System.currentTimeMillis()-start).getSeconds());
+        });
+
+        System.out.println("总耗时："+(System.currentTimeMillis()-start));
+
+//        Object jsona =   TypeUtils.cast(data,DemoA.class, ParserConfig.getGlobalInstance());
 //        long start2 = System.currentTimeMillis();
-//        for(int i=0;i<10000;i++){
-//            JSON.toJavaObject(JSON.parseObject(JSON.toJSONString(DemoA.testData())),DemoA.class);
-//        }
-//        System.out.println(System.currentTimeMillis()-start2);
+//        IntStream.range(0,1000000).forEach(i->{
+//            TypeUtils.cast(data,DemoA.class, ParserConfig.getGlobalInstance());
+//        });
+//
+//        System.out.println("总耗时："+(System.currentTimeMillis()-start2));
+
+        DemoA b = new DemoA();
+        ObjectUtil.copyProperties(a,b);
+        System.out.println();
     }
 
     /**

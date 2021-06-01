@@ -49,14 +49,22 @@ public class DemoA {
     private Map<String, Integer> stringIntegerMap;
     private LinkedHashMap<Integer, Integer> integerIntegerLinkedHashMap;
 
-//    private List<DemoA> demoAList;
-//    private Map<String, DemoA> stringDemoAMap;
+    private List<DemoA> demoAList;
+    private Map<String, DemoA> stringDemoAMap;
 
     private Integer[] integersArray;
 
-//    private DemoEnum demoEnum;
-//
-//    private DemoEnum[] demoEnumArray;
+    private DemoEnum demoEnum;
+    //
+    private DemoEnum[] demoEnumArray;
+
+    public void setAttrLong(long attrLong) {
+        this.attrLong = attrLong;
+    }
+
+    public void setAttrString2(StringBuilder attrString2) {
+        this.attrString2 = attrString2.toString();
+    }
 
     public static Map<String, Object> testData() {
         Map<String, Object> map = Maps.newHashMap();
@@ -116,16 +124,19 @@ public class DemoA {
             put("3", "33");
         }});
 
-        HashMap<String, Object> map2 = Maps.newHashMap(map);
-        map.put("demoAList", new HashMap[]{map2, map2});
-        map.put("stringDemoAMap", new HashMap<String, Object>() {{
-            put("1", map2);
-            put("2", map2);
-        }});
+
 
         map.put("integersArray", new String[]{"1", "2"});
         map.put("demoEnum", "a_bc");
         map.put("demoEnumArray", new String[]{"aa", "bb", "a_bc"});
+
+        HashMap<String, Object> map2 = Maps.newHashMap(map);
+
+        map.put("stringDemoAMap", new HashMap<String, Object>() {{
+            put("1", map2);
+            put("2", map2);
+        }});
+        map.put("demoAList", new HashMap[]{map2, map2});
         return map;
     }
 }

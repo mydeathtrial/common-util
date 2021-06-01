@@ -10,12 +10,14 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.StreamSupport;
 
 /**
  * @author 佟盟
@@ -33,43 +35,30 @@ public class StringUtil extends StringUtils {
      * @param targets 比对集
      * @return targets中与原字符串相似度最高的字符串
      */
-    public static String vagueMatches(String source, Iterable<String> targets) {
+    public static String vagueMatches(String source, Collection<String> targets) {
+        if(targets.contains(source)){
+            return source;
+        }
+
+        String underlineSource = toUnderline(source).toLowerCase();
+        if(targets.contains(underlineSource)){
+            return underlineSource;
+        }
+
+        String camelSource = toCamel(source);
+        if(targets.contains(camelSource)){
+            return camelSource;
+        }
+
         // 根据source构建模糊匹配正则
         String fuzzyMatching = camelToMatchesRegex(source);
 
-        // 构建模糊匹配结果容器，装填匹配到的字符串
-        Set<String> keys = Sets.newHashSetWithExpectedSize(2);
-        targets.forEach(key -> {
-            if (PatternUtil.matches(fuzzyMatching, key, Pattern.CASE_INSENSITIVE)) {
-                keys.add(key);
-            }
-        });
-
-        // 最终结果
-        String result = null;
-
-        if (keys.size() > 0) {
-            if (keys.contains(source)) {
-                result = source;
-            } else {
-                String camelToUnderlineKey = toUnderline(source);
-                String camelToUnderlineKeyUpper = camelToUnderlineKey.toUpperCase();
-                String camelToUnderlineKeyLower = camelToUnderlineKey.toLowerCase();
-
-                if (keys.contains(camelToUnderlineKey)) {
-                    result = camelToUnderlineKey;
-                } else if (keys.contains(camelToUnderlineKeyUpper)) {
-                    result = camelToUnderlineKeyUpper;
-                } else if (keys.contains(camelToUnderlineKeyLower)) {
-                    result = camelToUnderlineKeyLower;
-                }
-            }
-
-            if (result == null) {
-                result = keys.iterator().next();
-            }
-        }
-        return result;
+        return targets.parallelStream()
+                .filter(target-> target.equalsIgnoreCase(source) ||
+                        PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE) ||
+                        target.equalsIgnoreCase(camelSource) ||
+                        target.equalsIgnoreCase(underlineSource))
+                .findFirst().orElse(null);
     }
 
     /**

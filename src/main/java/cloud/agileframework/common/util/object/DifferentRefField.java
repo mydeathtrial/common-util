@@ -49,7 +49,7 @@ public class DifferentRefField extends DifferentField {
 
                 String currentFieldName = r.getFieldName();
 
-                r.setFieldRemark(parentFieldName + Constant.RegularAbout.SPOT + currentFieldName);
+                r.setFieldName(parentFieldName + Constant.RegularAbout.SPOT + currentFieldName);
             }
 
             if (!ignoreParentRemark) {

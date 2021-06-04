@@ -1509,9 +1509,9 @@ public class ObjectUtil extends ObjectUtils {
         CompareField targetCompareField = ObjectUtil.getFieldAnnotation(target, fieldName, CompareField.class);
         if (sourceCompareField != null || targetCompareField != null) {
             List<DifferentField> ref = getDifferenceProperties(sourceValue, targetValue);
-            return new DifferentRefField(fieldName, remark, Object.class,
-                    ref,sourceCompareField == null ? targetCompareField.ignoreParentRemark() : sourceCompareField.ignoreParentRemark(),
-                    sourceCompareField == null ? targetCompareField.ignoreParentName() : sourceCompareField.ignoreParentName());
+            return new DifferentRefField(fieldName, remark, Object.class, ref,
+                    sourceCompareField == null ? targetCompareField.ignoreParentName() : sourceCompareField.ignoreParentName(),
+                    sourceCompareField == null ? targetCompareField.ignoreParentRemark() : sourceCompareField.ignoreParentRemark());
         }
 
         if (source == null) {

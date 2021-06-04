@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -231,30 +232,42 @@ public class FileUtil extends FileUtils {
         }
     }
 
+    public static void createZip(List<?> fileList, String dir, String zipFileName) throws IOException {
+        if(!zipFileName.toLowerCase().endsWith(".zip")){
+            zipFileName = zipFileName + ".zip";
+        }
+        File zip = createFile(dir, zipFileName);
+        if (zip == null) {
+            throw new IOException("file create fail");
+        }
+
+        createZipFile(fileList, new FileOutputStream(zip));
+    }
+
     public static File createFile(String path, String fileName) throws IOException {
         File dir = new File(path);
         if (!dir.exists()) {
-            boolean isSuccess = dir.mkdirs();
-            if (!isSuccess) {
+            dir.mkdirs();
+            if (!dir.exists()) {
                 return null;
             }
         }
-        File file = new File(dir.getPath() + "/" + fileName);
+        File file = new File(dir.getPath() + File.separator + fileName);
         if (!file.exists()) {
-            boolean isSuccess = file.createNewFile();
-            if (!isSuccess) {
+            file.createNewFile();
+            if (!file.exists()) {
                 return null;
             }
         }
         return file;
     }
 
-    public static void createZipFile(List<?> fileList, OutputStream outputStream) throws IOException {
+    private static void createZipFile(List<?> fileList, OutputStream outputStream) throws IOException {
         ZipOutputStream out = new ZipOutputStream(outputStream);
         zipFile(fileList, out);
     }
 
-    public static void zipFile(List<?> fileList, ZipOutputStream out) throws IOException {
+    private static void zipFile(List<?> fileList, ZipOutputStream out) throws IOException {
         if (fileList != null && !fileList.isEmpty()) {
             for (Object fileObject : fileList) {
                 if (fileObject instanceof String) {

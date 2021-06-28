@@ -1,14 +1,10 @@
 package cloud.agileframework.common.util.collection;
 
-import com.agile.common.data.DictionaryDataBase;
-import com.agile.common.data.DictionaryNode;
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -36,7 +32,7 @@ public class TreeUtilTest extends TestCase {
                 list.add(new TreeNode(id, parentId, 0));
                 i--;
             }
-            if(root == 90){
+            if (root == 90) {
                 root = 97;
                 continue;
             }

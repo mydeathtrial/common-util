@@ -28,6 +28,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,10 +63,8 @@ import java.util.regex.Pattern;
 public class HttpUtil {
     private static final Logger logger = LoggerFactory.getLogger(HttpUtil.class);
 
-    private static final String HTTPS = "https://";
-    private static final String HTTP = "http://";
-    private static final String CONTENT_TYPE = "Content-type";
-    private static final String CONNECTION = "Connection";
+    private static final String HTTPS_PREFIX = "https://";
+    private static final String HTTP_PREFIX = "http://";
 
     /**
      * get请求
@@ -304,7 +304,29 @@ public class HttpUtil {
      */
     private static String parseParam(String url, Object param, HttpRequestBase httpRequestBase) {
         if (param != null && httpRequestBase instanceof HttpEntityEnclosingRequestBase) {
-            StringEntity entity = new StringEntity(JSON.toJSONString(param), ContentType.create(ContentType.APPLICATION_JSON.getMimeType(), StandardCharsets.UTF_8));
+            String content = param instanceof String ? (String) param : JSON.toJSONString(param);
+
+            Header contentType = httpRequestBase.getLastHeader(HTTP.CONTENT_TYPE);
+            if (contentType == null) {
+                contentType = new BasicHeader(HTTP.CONTENT_TYPE, ContentType.APPLICATION_JSON.toString());
+                httpRequestBase.setHeader(contentType);
+            }
+
+            Header connection = httpRequestBase.getLastHeader(HTTP.CONN_DIRECTIVE);
+            if (connection == null) {
+                connection = new BasicHeader(HTTP.CONN_DIRECTIVE, HTTP.CONN_CLOSE);
+                httpRequestBase.setHeader(connection);
+            }
+
+            Header contentEncoding = httpRequestBase.getLastHeader(HTTP.CONTENT_ENCODING);
+            if (contentEncoding == null) {
+                contentEncoding = new BasicHeader(HTTP.CONTENT_ENCODING, ContentType.APPLICATION_JSON.getCharset().name());
+                httpRequestBase.setHeader(contentEncoding);
+            }
+
+            StringEntity entity = new StringEntity(content, ContentType.parse(contentType.getValue()));
+            entity.setContentType(contentType);
+            entity.setContentEncoding(contentEncoding);
             ((HttpEntityEnclosingRequestBase) httpRequestBase).setEntity(entity);
         } else if (param != null) {
             Map<String, Object> paramMap = ObjectUtil.to(param, new TypeReference<Map<String, Object>>() {
@@ -335,12 +357,6 @@ public class HttpUtil {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 httpRequestBase.setHeader(entry.getKey(), String.valueOf(entry.getValue()));
             }
-        }
-        if (httpRequestBase.getHeaders(CONTENT_TYPE).length == 0) {
-            httpRequestBase.setHeader(CONTENT_TYPE, "application/json; charset=utf-8");
-        }
-        if (httpRequestBase.getHeaders(CONNECTION).length == 0) {
-            httpRequestBase.setHeader(CONNECTION, "Close");
         }
     }
 
@@ -382,10 +398,10 @@ public class HttpUtil {
     private static String parseUrl(Protocol protocol, String url) {
         url = url.trim();
         String lowerCase = url.toLowerCase();
-        if (Protocol.Https == protocol && !lowerCase.startsWith(HTTPS)) {
-            url = HTTPS + url;
-        } else if (Protocol.Http == protocol && !lowerCase.startsWith(HTTP)) {
-            url = HTTP + url;
+        if (Protocol.Https == protocol && !lowerCase.startsWith(HTTPS_PREFIX)) {
+            url = HTTPS_PREFIX + url;
+        } else if (Protocol.Http == protocol && !lowerCase.startsWith(HTTP_PREFIX)) {
+            url = HTTP_PREFIX + url;
         }
         return url;
     }

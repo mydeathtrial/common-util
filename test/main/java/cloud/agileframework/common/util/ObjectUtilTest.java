@@ -1,7 +1,6 @@
 package cloud.agileframework.common.util;
 
 import cloud.agileframework.common.util.clazz.TypeReference;
-import cloud.agileframework.common.util.collection.TreeBase;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.http.HttpUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
@@ -9,8 +8,6 @@ import com.agile.common.data.DemoA;
 import com.agile.common.data.DemoC;
 import com.agile.common.data.DemoD;
 import com.agile.common.data.DemoE;
-import com.agile.common.data.DictionaryDataBase;
-import com.agile.common.data.DictionaryNode;
 import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Maps;
 import jdk.internal.org.objectweb.asm.ClassReader;
@@ -78,31 +75,6 @@ public class ObjectUtilTest {
         if (ObjectUtil.isAllNullValidity(b)) {
             throw new RuntimeException();
         }
-    }
-
-    @Test
-    public void objectUtil2() {
-
-        DictionaryDataBase b = new DictionaryDataBase();
-
-        DictionaryDataBase bb = new DictionaryDataBase();
-
-        b.setId("1");
-        b.setParentId("2");
-        b.setSort(1);
-
-        bb.setId("11");
-        bb.setParentId("22");
-        bb.setSort(12);
-        b.setChildren(new TreeSet<DictionaryDataBase>() {{
-            add(bb);
-            add(bb);
-        }});
-
-        TreeBase<String, DictionaryDataBase> t = ObjectUtil.to(JSON.toJSON(b), new TypeReference<TreeBase<String, DictionaryDataBase>>() {
-        });
-        System.out.println(t);
-
     }
 
     /**

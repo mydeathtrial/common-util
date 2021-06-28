@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -88,18 +89,53 @@ public class PropertiesUtil {
         String className = ((StackTraceElement) ArrayUtil.last(new RuntimeException().getStackTrace())).getClassName();
 
         // 加载agile系列配置文件
-        readJar("cloud.agileframework.conf");
+        readJar("cloud.agileframework.conf", PropertiesUtil::toProperties);
+        readJar("com.agile.conf", PropertiesUtil::toProperties);
 
         // 读取jar包配置
-        readJar(className.substring(0, className.lastIndexOf(".")));
+        readJar(className.substring(0, className.lastIndexOf(".")), PropertiesUtil::toProperties);
 
         // 读取编译目录配置文件
-        readDir();
+        readDir(PropertiesUtil::toProperties);
 
         // 读取环境变量
         readEnv();
 
         parsePlaceholder();
+    }
+
+    /**
+     * 按文件优先级处理文件
+     *
+     * @param consumer 处理文件的方法
+     */
+    public static void traverseFile(BiConsumer<String, InputStream> consumer) {
+        traverseFile(consumer, null);
+    }
+
+    /**
+     * 按照文件优先级处理文件
+     *
+     * @param consumer    处理文件的方法
+     * @param packagePath 以点分割的包路径，如com.baidu.xxx
+     */
+    public static void traverseFile(BiConsumer<String, InputStream> consumer, String packagePath) {
+        if (packagePath == null) {
+            // 加载agile系列配置文件
+            readJar("cloud.agileframework.conf", consumer);
+            readJar("com.agile.conf", consumer);
+
+            // 获取启动类
+            String className = ((StackTraceElement) ArrayUtil.last(new RuntimeException().getStackTrace())).getClassName();
+
+            // 读取jar包配置
+            readJar(className.substring(0, className.lastIndexOf(".")), consumer);
+        } else {
+            readJar(packagePath, consumer);
+        }
+
+        // 读取编译目录配置文件
+        readDir(consumer);
     }
 
     private static void parsePlaceholder() {
@@ -113,14 +149,14 @@ public class PropertiesUtil {
     /**
      * 去读编译目录下的配置文件
      */
-    private static void readDir() {
+    private static void readDir(BiConsumer<String, InputStream> consumer) {
         Set<String> fileNames = Sets.newHashSet();
         Set<String> overrideConfigFileNames = Sets.newHashSet();
         try {
             Collections.list(PropertiesUtil.class.getClassLoader().getResources(""))
                     .forEach(url -> {
                         try {
-                            readDir(fileNames, new File(URLDecoder.decode(url.getPath(), StandardCharsets.UTF_8.name())));
+                            readDir(fileNames, new File(URLDecoder.decode(url.getPath(), StandardCharsets.UTF_8.name())), consumer);
                         } catch (UnsupportedEncodingException e) {
                             e.printStackTrace();
                         }
@@ -128,9 +164,9 @@ public class PropertiesUtil {
 
             String classPath = PropertiesUtil.class.getResource(CLASSES_DIR_SPLIT).getPath();
 
-            fileNames.stream().filter(filterOverrideConfigName(overrideConfigFileNames)).sorted(getStringComparator()).forEach(toRead(classPath));
+            fileNames.stream().filter(filterOverrideConfigName(overrideConfigFileNames)).sorted(getStringComparator()).forEach(toRead(classPath, consumer));
 
-            overrideConfigFileNames.stream().sorted(getStringComparator()).forEach(toRead(classPath));
+            overrideConfigFileNames.stream().sorted(getStringComparator()).forEach(toRead(classPath, consumer));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -142,10 +178,10 @@ public class PropertiesUtil {
      * @param classPath 编译目录
      * @return 方法
      */
-    private static Consumer<String> toRead(String classPath) {
+    private static Consumer<String> toRead(String classPath, BiConsumer<String, InputStream> consumer) {
         return fileName -> {
             try {
-                read(fileName.replace(URLDecoder.decode(classPath, StandardCharsets.UTF_8.name()), "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)));
+                read(fileName.replace(URLDecoder.decode(classPath, StandardCharsets.UTF_8.name()), "").replace(DIR_SPLIT, CLASSES_DIR_SPLIT), new FileInputStream(new File(fileName)), consumer);
             } catch (FileNotFoundException | UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
@@ -191,7 +227,7 @@ public class PropertiesUtil {
      *
      * @param dir 文件夹
      */
-    private static void readDir(Set<String> fileNames, File dir) {
+    private static void readDir(Set<String> fileNames, File dir, BiConsumer<String, InputStream> consumer) {
         if (dir.exists() && dir.isDirectory()) {
             File[] files = dir.listFiles();
             if (files == null) {
@@ -205,11 +241,15 @@ public class PropertiesUtil {
                         e.printStackTrace();
                     }
                 } else if (file.isDirectory()) {
-                    readDir(fileNames, file);
+                    readDir(fileNames, file, consumer);
                 }
             }
         }
 
+    }
+
+    public static void readJar(String packagePath) {
+        readJar(packagePath, PropertiesUtil::toProperties);
     }
 
     /**
@@ -217,18 +257,22 @@ public class PropertiesUtil {
      *
      * @param packagePath 扫描的包名
      */
-    public static void readJar(String packagePath) {
+    public static void readJar(String packagePath, BiConsumer<String, InputStream> consumer) {
         Set<String> resourceNames = JarUtil.getFile(packagePath, false, CLASS);
         Set<String> overrideConfigFileNames = Sets.newHashSet();
 
         resourceNames.stream()
                 .filter(filterOverrideConfigName(overrideConfigFileNames))
                 .sorted(getStringComparator())
-                .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName)));
+                .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName), consumer));
 
         overrideConfigFileNames.stream()
                 .sorted(getStringComparator())
-                .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName)));
+                .forEach(resourceName -> read(resourceName, PropertiesUtil.class.getResourceAsStream(resourceName), consumer));
+    }
+
+    public static void read(String fileName, InputStream inputStream) {
+        read(fileName, inputStream, PropertiesUtil::toProperties);
     }
 
     /**
@@ -237,12 +281,22 @@ public class PropertiesUtil {
      * @param fileName    文件名
      * @param inputStream 输入流
      */
-    public static void read(String fileName, InputStream inputStream) {
+    public static void read(String fileName, InputStream inputStream, BiConsumer<String, InputStream> consumer) {
 
         if (fileName == null || inputStream == null) {
             return;
         }
 
+        consumer.accept(fileName, inputStream);
+    }
+
+    /**
+     * 文件内容转换为配置信息
+     *
+     * @param fileName    文件名
+     * @param inputStream 文件流
+     */
+    private static void toProperties(String fileName, InputStream inputStream) {
         try {
 
             final String properties = "properties";

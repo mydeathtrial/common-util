@@ -5,8 +5,11 @@ import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.map.MapUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.alibaba.fastjson.JSON;
+import com.google.common.collect.Maps;
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
@@ -20,24 +23,31 @@ import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.net.ConnectException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -176,6 +186,8 @@ public class HttpUtil {
         return send(Protocol.extract(url), RequestMethod.DELETE, url, header, param);
     }
 
+    private static final Map<String, InetAddress> MAPPING = Maps.newHashMap();
+
     /**
      * 发送请求
      *
@@ -187,27 +199,76 @@ public class HttpUtil {
      * @return 相应信息
      */
     public static CloseableHttpResponse originalSend(Protocol protocol, String var0, RequestMethod method, String url, Object header, Object param) {
-        try {
-            CloseableHttpClient httpClient = getHttpClient(protocol, var0);
+        final URI uri = URI.create(url);
+        int max = 10;
+        int count = max;
+        while (count > 0) {
+            try {
+                CloseableHttpClient httpClient = getHttpClient(protocol, var0);
 
-            HttpRequestBase httpRequestBase = getHttpRequestBase(method);
+                HttpRequestBase httpRequestBase = getHttpRequestBase(method);
 
-            parseHeader(header, httpRequestBase);
+                if (!MAPPING.isEmpty()) {
+                    httpRequestBase.setConfig(RequestConfig.custom().setLocalAddress(MAPPING.get(uri.getHost())).build());
+                }
 
-            url = parseParam(url, param, httpRequestBase);
+                parseHeader(header, httpRequestBase);
 
-            url = parseUrl(protocol, url);
+                url = parseParam(url, param, httpRequestBase);
 
-            httpRequestBase.setURI(URI.create(url));
+                url = parseUrl(protocol, url);
 
-            return httpClient.execute(httpRequestBase);
+                httpRequestBase.setURI(uri);
 
-        } catch (NotFoundRequestMethodException e) {
-            logger.error("第二个参数 method 未成功分析出请求方式", e);
-        } catch (Exception e) {
-            logger.error("请求失败", e);
+                return httpClient.execute(httpRequestBase);
+
+            } catch (NotFoundRequestMethodException e) {
+                logger.error("第二个参数 method 未成功分析出请求方式", e);
+                return null;
+            } catch (ConnectException e) {
+                List<InetAddress> localIpAddress = getLocalIpAddress();
+                final int index = max - count;
+                if (index > localIpAddress.size() - 1) {
+                    logger.error("网络连接异常", e);
+                    return null;
+                }
+                MAPPING.put(uri.getHost(), localIpAddress.get(index));
+                count--;
+            } catch (Exception e) {
+                logger.error("请求失败", e);
+                return null;
+            }
         }
         return null;
+    }
+
+    /**
+     * 获取本机的所有ip
+     *
+     * @return 本机ip列表
+     */
+    public static List<InetAddress> getLocalIpAddress() {
+        List<InetAddress> ipList = new ArrayList<>();
+        Enumeration<?> interfaces;
+        try {
+            interfaces = NetworkInterface.getNetworkInterfaces();
+        } catch (SocketException e) {
+            return ipList;
+        }
+        while (interfaces.hasMoreElements()) {
+            NetworkInterface ni = (NetworkInterface) interfaces.nextElement();
+            Enumeration<?> ipAddressEnum = ni.getInetAddresses();
+            while (ipAddressEnum.hasMoreElements()) {
+                InetAddress address = (InetAddress) ipAddressEnum.nextElement();
+                if (address.isLoopbackAddress() || address.isLinkLocalAddress()) {
+                    continue;
+                }
+                ipList.add(address);
+            }
+        }
+
+
+        return ipList;
     }
 
     public static String send(Protocol protocol, RequestMethod method, String url, Object header, Object param) {
@@ -243,7 +304,7 @@ public class HttpUtil {
      */
     private static String parseParam(String url, Object param, HttpRequestBase httpRequestBase) {
         if (param != null && httpRequestBase instanceof HttpEntityEnclosingRequestBase) {
-            StringEntity entity = new StringEntity(JSON.toJSONString(param), StandardCharsets.UTF_8);
+            StringEntity entity = new StringEntity(JSON.toJSONString(param), ContentType.create(ContentType.APPLICATION_JSON.getMimeType(), StandardCharsets.UTF_8));
             ((HttpEntityEnclosingRequestBase) httpRequestBase).setEntity(entity);
         } else if (param != null) {
             Map<String, Object> paramMap = ObjectUtil.to(param, new TypeReference<Map<String, Object>>() {
@@ -407,21 +468,26 @@ public class HttpUtil {
         if (response == null) {
             return null;
         }
-        StringBuilder temp = new StringBuilder();
+        String temp = null;
 
-        try (
-                InputStreamReader re = new InputStreamReader(response.getEntity().getContent());
-                BufferedReader bufferedReader = new BufferedReader(re)
-        ) {
-            String line;
-            String newLine = System.getProperty("line.separator");
-            while ((line = bufferedReader.readLine()) != null) {
-                temp.append(line).append(newLine);
+        try {
+            HttpEntity entity = response.getEntity();
+            if (entity != null) {
+                temp = EntityUtils.toString(entity, "UTF-8");
             }
+
         } catch (IOException e) {
             logger.error("响应流读取失败", e);
+        } finally {
+            if (response instanceof CloseableHttpResponse) {
+                try {
+                    ((CloseableHttpResponse) response).close();
+                } catch (IOException e) {
+                    logger.error("响应流读取失败", e);
+                }
+            }
         }
-        return temp.toString();
+        return temp;
     }
 
     /**

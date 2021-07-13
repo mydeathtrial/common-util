@@ -16,8 +16,7 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class DifferentField implements Serializable {
-    public static final transient DifferentField EQUAL_FIELD = new DifferentField();
+public abstract class DifferentField implements Serializable {
     /**
      * 属性名
      */
@@ -35,4 +34,11 @@ public class DifferentField implements Serializable {
         static final LogFieldIgnoreException
                 LOG_FIELD_IGNORE_EXCEPTION = new LogFieldIgnoreException();
     }
+
+    /**
+     * 描述
+     *
+     * @return 文字描述
+     */
+    public abstract String describe();
 }

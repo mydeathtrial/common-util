@@ -25,12 +25,10 @@ public class ObjectUtilTest {
         target.setO1(source);
         final O2 target1 = new O2(null, new String[]{"李磊", "张天爱"}, 12);
 
-        List<DifferentField> dif = ObjectUtil.getDifferenceProperties(source,
-                target);
-        System.out.println(JSON.toJSONString(dif));
+        System.out.println(ObjectUtil.getDifferencePropertiesDesc(source,
+                target));
 
-        List<DifferentField> dif2 = ObjectUtil.getDifferenceProperties(source, target1);
-        System.out.println(JSONUtil.toJSONString(dif2, SerializerFeature.PrettyFormat,SerializerFeature.WriteMapNullValue));
+        System.out.println(ObjectUtil.getDifferencePropertiesDesc(source, target1));
     }
 
 

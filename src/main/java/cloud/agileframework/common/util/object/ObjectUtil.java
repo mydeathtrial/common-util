@@ -1453,7 +1453,7 @@ public class ObjectUtil extends ObjectUtils {
         for (String fieldName : willResolveFieldNames) {
             DifferentField differentField = resolve(source, target, fieldName);
             // 过滤掉相同的属性
-            if (differentField == DifferentField.EQUAL_FIELD) {
+            if (differentField == null) {
                 continue;
             }
             if (differentField instanceof DifferentRefField) {
@@ -1467,6 +1467,19 @@ public class ObjectUtil extends ObjectUtils {
     }
 
     /**
+     * 提取中文描述信息
+     *
+     * @param source          比较对象
+     * @param target          比较对象
+     * @param excludeProperty 排除的属性
+     * @return 描述信息
+     */
+    public static String getDifferencePropertiesDesc(Object source, Object target, String... excludeProperty) {
+        List<DifferentField> difFields = getDifferenceProperties(source, target, excludeProperty);
+        return difFields.stream().map(DifferentField::describe).collect(Collectors.joining(Constant.RegularAbout.NEW_LINE));
+    }
+
+    /**
      * 比较两个对象的fieldName属性，source与target可以为不同的两种类型对象，属性不存在与属性值为空等效
      *
      * @param source    比较对象
@@ -1475,7 +1488,7 @@ public class ObjectUtil extends ObjectUtils {
      * @return 差异信息
      */
     public static DifferentField resolve(Object source, Object target, String fieldName) {
-        DifferentField result = DifferentField.EQUAL_FIELD;
+        DifferentField result = null;
         if (source == null && target == null) {
             return result;
         }

@@ -68,4 +68,15 @@ public class DifferentRefField extends DifferentField {
             return r;
         }).collect(Collectors.toList());
     }
+
+    @Override
+    public String describe() {
+        StringBuilder desc = new StringBuilder(getFieldRemark() == null ? getFieldName() : getFieldRemark()).append(Constant.RegularAbout.COLON);
+        if (ref != null && !ref.isEmpty()) {
+            String refDesc = ref.stream().map(DifferentField::describe).collect(Collectors.joining(Constant.RegularAbout.NEW_LINE));
+            desc.append(refDesc);
+        }
+
+        return desc.toString();
+    }
 }

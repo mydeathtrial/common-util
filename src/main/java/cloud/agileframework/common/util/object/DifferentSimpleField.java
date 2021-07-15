@@ -4,6 +4,7 @@ import cloud.agileframework.common.constant.Constant;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Objects;
 
@@ -34,13 +35,22 @@ public class DifferentSimpleField extends DifferentField {
     @Override
     public String describe() {
         StringBuilder desc = new StringBuilder(getFieldRemark() == null ? getFieldName() : getFieldRemark()).append(Constant.RegularAbout.COLON);
-        if (!Objects.deepEquals(newValue, oldValue)) {
-            if (oldValue == null) {
-                desc.append(String.format("设置成了%s", newValue));
-            } else if (newValue == null) {
-                desc.append(String.format("%s被删除了", oldValue));
+        Object newValueTemp = newValue;
+        if (newValueTemp instanceof String && StringUtils.isBlank((String) newValueTemp)) {
+            newValueTemp = null;
+        }
+
+        Object oldValueTemp = oldValue;
+        if (oldValueTemp instanceof String && StringUtils.isBlank((String) oldValueTemp)) {
+            oldValueTemp = null;
+        }
+        if (!Objects.deepEquals(newValueTemp, oldValueTemp)) {
+            if (oldValueTemp == null) {
+                desc.append(String.format("设置成了%s", newValueTemp));
+            } else if (newValueTemp == null) {
+                desc.append(String.format("%s被删除了", oldValueTemp));
             } else {
-                desc.append(String.format("由%s变成%s", oldValue, newValue));
+                desc.append(String.format("由%s变成%s", oldValueTemp, newValueTemp));
             }
         }
         return desc.toString();

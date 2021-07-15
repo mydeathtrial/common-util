@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,11 +29,11 @@ public class DifferentCollectionField extends DifferentField {
     public String describe() {
         StringBuilder desc = new StringBuilder(getFieldRemark() == null ? getFieldName() : getFieldRemark()).append(Constant.RegularAbout.COLON);
         if (add != null && !add.isEmpty()) {
-            desc.append("增加了").append(String.join(Constant.RegularAbout.COMMA, (ArrayList) add)).append(Constant.RegularAbout.SEMICOLON);
+            desc.append("增加了").append(String.join(Constant.RegularAbout.COMMA, ObjectUtil.toString(add))).append(Constant.RegularAbout.SEMICOLON);
         }
 
         if (del != null && !del.isEmpty()) {
-            desc.append("删除了").append(String.join(Constant.RegularAbout.COMMA, (ArrayList) del)).append(Constant.RegularAbout.SEMICOLON);
+            desc.append("删除了").append(String.join(Constant.RegularAbout.COMMA, ObjectUtil.toString(del))).append(Constant.RegularAbout.SEMICOLON);
         }
 
         return desc.toString();

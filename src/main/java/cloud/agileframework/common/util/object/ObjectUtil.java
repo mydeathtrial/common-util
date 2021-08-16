@@ -1377,8 +1377,9 @@ public class ObjectUtil extends ObjectUtils {
      * @param o 对象
      * @return Map
      */
-    public static Map<String, Object> getUnderlineMapFromObject(Object o) {
+    public static Map<String, Object> getUnderlineMapFromObject(Object o, String... excludeField) {
         Set<Field> fields = ClassUtil.getAllField(o.getClass());
+        fields = fields.stream().filter(field -> ArrayUtils.contains(excludeField, field.getName())).collect(Collectors.toSet());
         Map<String, Object> result = new HashMap<>(fields.size());
         if (!fields.isEmpty()) {
             fields.forEach(field -> {

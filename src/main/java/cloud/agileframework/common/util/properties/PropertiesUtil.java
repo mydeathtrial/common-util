@@ -316,7 +316,7 @@ public class PropertiesUtil {
                 FILE_NAMES.add(fileName);
             }
 
-            System.out.println(fileName);
+//            System.out.println(fileName);
             if (log.isDebugEnabled()) {
                 log.debug(fileName);
             }

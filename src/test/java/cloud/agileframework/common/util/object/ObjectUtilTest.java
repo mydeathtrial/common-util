@@ -1,12 +1,7 @@
 package cloud.agileframework.common.util.object;
 
-import cloud.agileframework.common.util.json.JSONUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.google.common.collect.Lists;
 import org.junit.Test;
-
-import java.util.List;
 
 /**
  * @author 佟盟

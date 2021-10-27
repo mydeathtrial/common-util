@@ -11,7 +11,6 @@ import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.date.DateUtil;
 import cloud.agileframework.common.util.map.MapUtil;
 import cloud.agileframework.common.util.number.NumberUtil;
-import cloud.agileframework.common.util.pattern.PatternUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -25,34 +24,13 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.sql.Timestamp;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -69,7 +47,7 @@ public class ObjectUtil extends ObjectUtils {
     private static final String SERIAL_VERSION_UID = "serialVersionUID";
 
     public static <T> T to(Object from, TypeReference<T> toClass) {
-        return to(from, toClass, false);
+        return to(from, toClass, true);
     }
 
     public static <T> T to(Object from, TypeReference<T> toClass, boolean alias) {
@@ -358,25 +336,9 @@ public class ObjectUtil extends ObjectUtils {
         if (Map.class.isAssignableFrom(sourceClass)) {
             Map<String, Object> map = (Map<String, Object>) from;
 
-            T object = ClassUtil.newInstance(toClass);
-            if (object != null) {
-
-                ClassUtil.getAllField(toClass)
-                        .parallelStream()
-                        .forEach(field -> {
-                            String key = StringUtil.vagueMatches(field.getName(), map.keySet());
-
-                            if (key != null) {
-                                try {
-                                    Object value = map.get(key);
-                                    setValue(object, field, value);
-                                } catch (IllegalArgumentException ignored) {
-                                }
-                            }
-                        });
-                if (isChange(object)) {
-                    return object;
-                }
+            T object = getObjectFromMap(toClass, map);
+            if (object != null && isChange(object)) {
+                return object;
             }
         } else if (from instanceof String) {
             try {
@@ -605,63 +567,6 @@ public class ObjectUtil extends ObjectUtils {
             throw new RuntimeException();
         }
         field.set(object, v);
-    }
-
-    /**
-     * 值比对方式
-     */
-    public enum Compare {
-        /**
-         * 相同
-         */
-        SAME,
-        /**
-         * 值不同的
-         */
-        DIFF,
-        /**
-         * source和target比对的字段都不空,并且值不相同的
-         */
-        DIFF_ALL_NOT_NULL,
-        /**
-         * source是空,并且值不相同的
-         */
-        DIFF_SOURCE_NULL,
-        /**
-         * target是空,并且值不相同的
-         */
-        DIFF_TARGET_NULL,
-        /**
-         * target属性值是默认值的,并且值不相同的
-         */
-        DIFF_TARGET_DEFAULT,
-        /**
-         * target属性值是默认值的,source属性不为空的,并且值不相同的
-         */
-        DIFF_SOURCE_NOT_NULL_AND_TARGET_DEFAULT,
-        /**
-         * source属性值不空的,并且值不相同的
-         */
-        DIFF_SOURCE_NOT_NULL,
-        /**
-         * target属性值不空的,并且值不相同的
-         */
-        DIFF_TARGET_NOT_NULL
-
-    }
-
-    /**
-     * 包含或者排除
-     */
-    public enum ContainOrExclude {
-        /**
-         * 包含
-         */
-        INCLUDE,
-        /**
-         * 不包含
-         */
-        EXCLUDE
     }
 
     /**
@@ -1068,14 +973,14 @@ public class ObjectUtil extends ObjectUtils {
             if (field.getType() == Boolean.TYPE) {
                 String getMethodName2 = "is" + StringUtil.toUpperName(field.getName());
                 methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
-                        (method.getName().equals(getMethodName) || method.getName().equals(getMethodName2)) && method.getParameterCount() == 0)
+                                (method.getName().equals(getMethodName) || method.getName().equals(getMethodName2)) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
                             return method;
                         }).collect(Collectors.toList());
             } else {
                 methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
-                        method.getName().equals(getMethodName) && method.getParameterCount() == 0)
+                                method.getName().equals(getMethodName) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
                             return method;
@@ -1153,26 +1058,24 @@ public class ObjectUtil extends ObjectUtils {
             return (T) map;
         }
         if (!ObjectUtils.isEmpty(map)) {
-            try {
-                T object = clazz.newInstance();
+            T object = ClassUtil.newInstance(clazz);
 
-                Set<Field> fields = ClassUtil.getAllField(clazz);
-                fields.parallelStream().forEach(field -> {
-                    String key = coverFieldNameToMapKey(clazz, field, prefix, suffix, map);
-                    if (key != null) {
-                        try {
-                            Object value = map.get(key);
+            Set<Field> fields = ClassUtil.getAllField(clazz);
+            fields.parallelStream().forEach(field -> {
+                String key = coverFieldNameToMapKey(clazz, field, prefix, suffix, map);
+                if (key != null) {
+                    try {
+                        Object value = map.get(key);
 
-                            setValue(object, field, value);
-                        } catch (IllegalArgumentException ignored) {
-                        }
+                        setValue(object, field, value);
+                    } catch (IllegalArgumentException ignored) {
                     }
-                });
-                if (!isAllNullValidity(object)) {
-                    return object;
                 }
-            } catch (InstantiationException | IllegalAccessException ignored) {
+            });
+            if (!isAllNullValidity(object)) {
+                return object;
             }
+
         }
         return null;
     }
@@ -1191,53 +1094,43 @@ public class ObjectUtil extends ObjectUtils {
     public static String coverFieldNameToMapKey(Class<?> clazz, Field field, String prefix, String suffix, Map<?, ?> map) {
         String key = null;
 
+        String propertyName = prefix + field.getName() + suffix;
+        if (map.containsKey(propertyName)) {
+            return propertyName;
+        }
+
+        Alias column = null;
         try {
-            Alias column = getAllEntityPropertyAnnotation(clazz, field, Alias.class);
-            if (column != null) {
-                for (String alias : column.value()) {
-                    if (map.containsKey(alias)) {
-                        key = alias;
-                        break;
-                    }
-                }
-            }
+            column = getAllEntityPropertyAnnotation(clazz, field, Alias.class);
         } catch (Exception ignored) {
         }
 
+        if (column != null) {
+            for (String alias : column.value()) {
+                if (map.containsKey(alias)) {
+                    key = alias;
+                    break;
+                }
+            }
+        }
         if (key != null) {
             return key;
         }
 
-        String propertyName = prefix + field.getName() + suffix;
-
-        String propertyRegex = StringUtil.camelToMatchesRegex(propertyName);
-        Set<String> keys = new HashSet<>();
-        for (Object mapKey : map.keySet()) {
-            if (PatternUtil.matches(propertyRegex, mapKey.toString(), Pattern.CASE_INSENSITIVE)) {
-                keys.add(mapKey.toString());
-            }
+        Set<String> keys = map.keySet().stream().map(Object::toString).collect(Collectors.toSet());
+        key = StringUtil.vagueMatches(propertyName, keys);
+        if (key != null) {
+            return key;
         }
 
-        if (keys.size() > 1) {
-            if (keys.contains(propertyName)) {
-                key = propertyName;
-            } else {
-                String camelToUnderlineKey = StringUtil.toUnderline(propertyName);
-                String camelToUnderlineKeyUpper = camelToUnderlineKey.toUpperCase();
-                String camelToUnderlineKeyLower = camelToUnderlineKey.toLowerCase();
-
-                if (keys.contains(camelToUnderlineKey)) {
-                    key = camelToUnderlineKey;
-                } else if (keys.contains(camelToUnderlineKeyUpper)) {
-                    key = camelToUnderlineKeyUpper;
-                } else if (keys.contains(camelToUnderlineKeyLower)) {
-                    key = camelToUnderlineKeyLower;
+        if (column != null) {
+            for (String alias : column.value()) {
+                key = StringUtil.vagueMatches(alias, keys);
+                if (key != null) {
+                    break;
                 }
             }
-        } else if (keys.size() == 1) {
-            key = keys.iterator().next();
         }
-
 
         return key;
     }
@@ -1741,5 +1634,62 @@ public class ObjectUtil extends ObjectUtils {
             }
         }
         return true;
+    }
+
+    /**
+     * 值比对方式
+     */
+    public enum Compare {
+        /**
+         * 相同
+         */
+        SAME,
+        /**
+         * 值不同的
+         */
+        DIFF,
+        /**
+         * source和target比对的字段都不空,并且值不相同的
+         */
+        DIFF_ALL_NOT_NULL,
+        /**
+         * source是空,并且值不相同的
+         */
+        DIFF_SOURCE_NULL,
+        /**
+         * target是空,并且值不相同的
+         */
+        DIFF_TARGET_NULL,
+        /**
+         * target属性值是默认值的,并且值不相同的
+         */
+        DIFF_TARGET_DEFAULT,
+        /**
+         * target属性值是默认值的,source属性不为空的,并且值不相同的
+         */
+        DIFF_SOURCE_NOT_NULL_AND_TARGET_DEFAULT,
+        /**
+         * source属性值不空的,并且值不相同的
+         */
+        DIFF_SOURCE_NOT_NULL,
+        /**
+         * target属性值不空的,并且值不相同的
+         */
+        DIFF_TARGET_NOT_NULL
+
+    }
+
+    /**
+     * 包含或者排除
+     */
+    public enum ContainOrExclude {
+        /**
+         * 包含
+         */
+        INCLUDE,
+        /**
+         * 不包含
+         */
+        EXCLUDE
     }
 }

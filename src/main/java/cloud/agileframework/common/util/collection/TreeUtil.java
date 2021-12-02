@@ -8,13 +8,7 @@ import com.google.common.collect.Sets;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -34,13 +28,13 @@ public class TreeUtil {
      * @return 树形结构数据集
      */
     public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> nodes, A rootValue, String splitChar, Set<Field> fullFieldSet) {
-        Map<A, List<T>> children = nodes.parallelStream().filter(node -> {
+        Map<Optional<A>, List<T>> children = nodes.parallelStream().filter(node -> {
             node.getChildren().clear();
             return !Objects.equals(node.getParentId(), rootValue);
-        }).collect(Collectors.groupingBy(TreeBase::getParentId));
+        }).collect(Collectors.groupingBy(n -> Optional.ofNullable(n.getParentId())));
 
         nodes.parallelStream().forEach(node -> {
-            final List<T> child = children.get(node.getId());
+            final List<T> child = children.get(Optional.ofNullable(node.getId()));
             if (child == null) {
                 return;
             }

@@ -1,25 +1,18 @@
 package cloud.agileframework.common.util.clazz;
 
 import cloud.agileframework.common.util.string.StringUtil;
+import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.commons.lang3.ClassUtils;
+import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Member;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -64,7 +57,7 @@ public class ClassUtil extends ClassUtils {
      */
     public static Method getMethod(Class<?> clazz, String methodName, @Nullable Class<?>... paramTypes) {
         ClassInfo<?> classInfo = ClassInfo.getCache(clazz);
-        if(paramTypes == null){
+        if (paramTypes == null) {
             return classInfo.getMethod(methodName);
         }
         return classInfo.getMethod(methodName, paramTypes);
@@ -181,19 +174,6 @@ public class ClassUtil extends ClassUtils {
      */
     public static boolean isPrimitive(Class<?> clazz) {
         return clazz.isPrimitive();
-    }
-
-    /**
-     * 目标
-     *
-     * @param <A> 注解类型
-     */
-    @Data
-    @EqualsAndHashCode
-    @AllArgsConstructor
-    public static class Target<A extends Annotation> {
-        private Member member;
-        private A annotation;
     }
 
     /**
@@ -334,7 +314,7 @@ public class ClassUtil extends ClassUtils {
 
     public static Class<?> isWrapOrPrimitive(TypeVariable<?> type) {
         return Arrays.stream((type)
-                .getBounds())
+                        .getBounds())
                 .map(ClassUtil::isWrapOrPrimitive)
                 .filter(Objects::nonNull)
                 .findFirst()
@@ -343,7 +323,7 @@ public class ClassUtil extends ClassUtils {
 
     public static Class<?> isWrapOrPrimitive(WildcardType type) {
         return Arrays.stream((type)
-                .getUpperBounds())
+                        .getUpperBounds())
                 .map(ClassUtil::isWrapOrPrimitive)
                 .filter(Objects::nonNull)
                 .findFirst()
@@ -378,7 +358,6 @@ public class ClassUtil extends ClassUtils {
                     ((Class<?>) clazz).isAssignableFrom(type);
         }
     }
-
 
     /**
      * 参数化类型
@@ -460,7 +439,8 @@ public class ClassUtil extends ClassUtils {
                     return true;
                 }
             }
-        } else if (!positive && upperBounds.length > 0) {
+        } else //不存在上下边界说明匹配任意对象，所以是任意对象父类
+            if (!positive && upperBounds.length > 0) {
             //查看clazz是不是wildcardType父类时，以wildcardType上边界匹配
             for (Type type : upperBounds) {
                 boolean is = isAssignableFrom(type, clazz, false);
@@ -468,10 +448,7 @@ public class ClassUtil extends ClassUtils {
                     return true;
                 }
             }
-        } else if (positive && upperBounds.length == 0) {
-            //不存在上下边界说明匹配任意对象，所以是任意对象父类
-            return true;
-        }
+        } else return positive && upperBounds.length == 0;
 
         return false;
     }
@@ -523,4 +500,92 @@ public class ClassUtil extends ClassUtils {
         return result;
     }
 
+    public static Type getGeneric(Class<?> clazz, Class<?> supperOrInterface, int post) {
+        Map<Type, Type> realTypeMapping = Maps.newConcurrentMap();
+        extractParameterizedTypeMap(clazz, realTypeMapping);
+        return getGeneric(clazz, supperOrInterface, post, realTypeMapping);
+    }
+
+    /**
+     * 获取类的泛型
+     *
+     * @param clazz             从该类中获取泛型
+     * @param parameterizedType clazz的祖先类或祖先接口，为参数化类型
+     * @param post              获取supperOrInterface中第几个参数化类型
+     * @return 泛型类型
+     */
+    public static Type getGeneric(Type clazz, Class<?> parameterizedType, int post, Map<Type, Type> realTypeMapping) {
+
+        if (parameterizedType.getTypeParameters().length == 0) {
+            throw new IllegalArgumentException(parameterizedType + "不是参数化类型");
+        }
+        if (clazz instanceof Class) {
+            Type genericSuperclass = ((Class<?>) clazz).getGenericSuperclass();
+            if (genericSuperclass != null) {
+                Type temp = getGeneric(genericSuperclass, parameterizedType, post, realTypeMapping);
+                if (temp != null) return temp;
+            }
+            Type[] genericInterfaces = ((Class<?>) clazz).getGenericInterfaces();
+            if (genericInterfaces.length > 0) {
+                for (Type genericInterface : genericInterfaces) {
+                    Type temp = getGeneric(genericInterface, parameterizedType, post, realTypeMapping);
+                    if (temp != null) return temp;
+                }
+            }
+            return null;
+        }
+        if (clazz instanceof ParameterizedType) {
+            if (((ParameterizedType) clazz).getRawType() == parameterizedType) {
+                Type type = ((ParameterizedType) clazz).getActualTypeArguments()[post];
+                return realTypeMapping.get(type);
+            }
+
+            return getGeneric(((ParameterizedType) clazz).getRawType(), parameterizedType, post, realTypeMapping);
+
+        }
+
+        return null;
+    }
+
+    /**
+     * 提取类型type的参数化类型映射关系
+     *
+     * @param type                 被解析的类型
+     * @param parameterizedTypeMap 参数化类型映射关系
+     */
+    private static void extractParameterizedTypeMap(Type type, Map<Type, Type> parameterizedTypeMap) {
+        if (type instanceof Class) {
+            extractParameterizedTypeMap(((Class<?>) type).getGenericSuperclass(), parameterizedTypeMap);
+            for (Type genericInterface : ((Class<?>) type).getGenericInterfaces()) {
+                extractParameterizedTypeMap(genericInterface, parameterizedTypeMap);
+            }
+            return;
+        }
+        //参数化类型
+        if (type instanceof ParameterizedType) {
+            Type[] realTypeArguments = ((ParameterizedType) type).getActualTypeArguments();
+            TypeVariable<?>[] typeArguments = ((ParameterizedTypeImpl) type).getRawType().getTypeParameters();
+            for (int i = 0; i < realTypeArguments.length; i++) {
+                if (realTypeArguments[i] instanceof TypeVariable) {
+                    parameterizedTypeMap.put(typeArguments[i], parameterizedTypeMap.get(realTypeArguments[i]));
+                    continue;
+                }
+                parameterizedTypeMap.put(typeArguments[i], realTypeArguments[i]);
+            }
+            extractParameterizedTypeMap(((ParameterizedTypeImpl) type).getRawType(), parameterizedTypeMap);
+        }
+    }
+
+    /**
+     * 目标
+     *
+     * @param <A> 注解类型
+     */
+    @Data
+    @EqualsAndHashCode
+    @AllArgsConstructor
+    public static class Target<A extends Annotation> {
+        private Member member;
+        private A annotation;
+    }
 }

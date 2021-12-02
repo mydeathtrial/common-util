@@ -21,6 +21,15 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
     private Integer sort;
     private SortedSet<A> children = new TreeSet<>();
 
+    /**
+     * 获取跟的parentId
+     *
+     * @return 跟节点的parentId值
+     */
+    public static <C extends Serializable> C rootParentId() {
+        return null;
+    }
+
     public <B extends A> void setChildren(SortedSet<B> children) {
         this.children.clear();
         this.children.addAll(children);

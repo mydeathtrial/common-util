@@ -1,6 +1,9 @@
 package cloud.agileframework.common.util.collection;
 
+import com.google.common.collect.Sets;
+import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.util.Objects;
@@ -15,11 +18,16 @@ import java.util.TreeSet;
  * @since 1.0
  */
 @Data
+@SuperBuilder(toBuilder = true)
 public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implements Comparable<TreeBase<I, A>>, Serializable {
     private I id;
     private I parentId;
     private Integer sort;
+    @Builder.Default
     private SortedSet<A> children = new TreeSet<>();
+
+    public TreeBase() {
+    }
 
     /**
      * 获取跟的parentId
@@ -28,11 +36,6 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
      */
     public static <C extends Serializable> C rootParentId() {
         return null;
-    }
-
-    public <B extends A> void setChildren(SortedSet<B> children) {
-        this.children.clear();
-        this.children.addAll(children);
     }
 
     /**
@@ -78,5 +81,19 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
         int b = sort == null ? 0 : sort;
         final int i = b - a;
         return i == 0 ? 1 : i;
+    }
+
+    public SortedSet<A> getChildren() {
+        if (children == null) {
+            return Sets.newTreeSet();
+        }
+        return children;
+    }
+
+    public <B extends A> void setChildren(SortedSet<B> children) {
+        if(children == null){
+            return;
+        }
+        this.children = (SortedSet<A>) children;
     }
 }

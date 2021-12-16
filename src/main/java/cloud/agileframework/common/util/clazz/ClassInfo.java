@@ -19,10 +19,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -396,8 +393,8 @@ public class ClassInfo<T> {
             log.debug("Expected method not found: " + clazz.getName() + '.' + methodName);
             return null;
         } else {
-            log.debug("No unique method found: " + clazz.getName() + '.' + methodName);
-            return null;
+            Optional<Method> any = candidates.stream().filter(c -> c.getDeclaringClass() == clazz).findAny();
+            targetMethod = any.orElseGet(() -> candidates.iterator().next());
         }
         if (!targetMethod.isAccessible()) {
             targetMethod.setAccessible(true);

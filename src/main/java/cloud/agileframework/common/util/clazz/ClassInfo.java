@@ -11,14 +11,7 @@ import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.MethodRepository;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -34,6 +27,7 @@ import java.util.stream.Collectors;
 public class ClassInfo<T> {
     private static final Map<String, ClassInfo<?>> CACHE = Maps.newConcurrentMap();
     private final Class<T> clazz;
+    private final Map<String, Type> typeVariableClassMap = Maps.newConcurrentMap();
     private Map<String, Constructor<T>> constructors;
     private Constructor<T> privateConstructor;
     private Set<Field> allField;
@@ -43,7 +37,6 @@ public class ClassInfo<T> {
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> fieldAnnotations;
     private Map<Class<? extends Annotation>, Set<ClassUtil.Target<?>>> methodAnnotations;
     private Map<Field, FieldInfo> fieldInfoCache;
-    private final Map<String, Type> typeVariableClassMap = Maps.newConcurrentMap();
     private boolean parsed = false;
 
     public ClassInfo(Type type) {
@@ -60,6 +53,60 @@ public class ClassInfo<T> {
             throw new IllegalArgumentException(type + "Unable to get complete class information");
         }
         getTypeParameterName(type);
+    }
+
+    /**
+     * 取类的缓存信息
+     *
+     * @param type 类型
+     * @param <A>  泛型
+     * @return ClassInfo
+     */
+    public static <A extends Type> ClassInfo<A> getCache(A type) {
+        ClassInfo<?> target = CACHE.get(type.toString());
+        if (target == null) {
+            target = new ClassInfo<>(type);
+            CACHE.put(type.toString(), target);
+        }
+        return (ClassInfo<A>) target;
+    }
+
+    /**
+     * 递归获取所有类属性，包括继承、私有、公有等
+     *
+     * @param clazz 目标类型
+     * @param set   属性集合
+     */
+    private static void extractFieldRecursion(Class<?> clazz, Set<Field> set) {
+        Field[] selfFields = clazz.getDeclaredFields();
+        Field[] extendFields = clazz.getFields();
+        set.addAll(Arrays.asList(selfFields));
+        set.addAll(Arrays.asList(extendFields));
+
+        Class<?> superClass = clazz.getSuperclass();
+        if (superClass == Object.class || superClass == null) {
+            return;
+        }
+        extractFieldRecursion(superClass, set);
+    }
+
+    /**
+     * 递归获取所有类方法，包括继承、私有、公有等
+     *
+     * @param clazz 目标类型
+     * @param set   方法结合
+     */
+    private static void extractMethodRecursion(Class<?> clazz, Set<Method> set) {
+        Method[] selfMethods = clazz.getDeclaredMethods();
+        Method[] extendMethods = clazz.getMethods();
+        set.addAll(Arrays.stream(selfMethods).filter(c -> c.getDeclaringClass() != Object.class).collect(Collectors.toSet()));
+        set.addAll(Arrays.stream(extendMethods).filter(c -> c.getDeclaringClass() != Object.class).collect(Collectors.toSet()));
+
+        Class<?> superClass = clazz.getSuperclass();
+        if (superClass == Object.class || superClass == null) {
+            return;
+        }
+        extractMethodRecursion(superClass, set);
     }
 
     /**
@@ -99,22 +146,6 @@ public class ClassInfo<T> {
                 }
             }
         }
-    }
-
-    /**
-     * 取类的缓存信息
-     *
-     * @param type 类型
-     * @param <A>  泛型
-     * @return ClassInfo
-     */
-    public static <A extends Type> ClassInfo<A> getCache(A type) {
-        ClassInfo<?> target = CACHE.get(type.toString());
-        if (target == null) {
-            target = new ClassInfo<>(type);
-            CACHE.put(type.toString(), target);
-        }
-        return (ClassInfo<A>) target;
     }
 
     /**
@@ -383,7 +414,7 @@ public class ClassInfo<T> {
         Set<Method> candidates = new HashSet<>(1);
         Method[] methods = clazz.getMethods();
         for (Method method : methods) {
-            if (methodName.equals(method.getName()) && Arrays.equals(method.getParameterTypes(),paramTypes)) {
+            if (methodName.equals(method.getName()) && Arrays.equals(method.getParameterTypes(), paramTypes)) {
                 candidates.add(method);
             }
         }
@@ -528,25 +559,6 @@ public class ClassInfo<T> {
         return allField;
     }
 
-    /**
-     * 递归获取所有类属性，包括继承、私有、公有等
-     *
-     * @param clazz 目标类型
-     * @param set   属性集合
-     */
-    private static void extractFieldRecursion(Class<?> clazz, Set<Field> set) {
-        Field[] selfFields = clazz.getDeclaredFields();
-        Field[] extendFields = clazz.getFields();
-        set.addAll(Arrays.asList(selfFields));
-        set.addAll(Arrays.asList(extendFields));
-
-        Class<?> superClass = clazz.getSuperclass();
-        if (superClass == Object.class || superClass == null) {
-            return;
-        }
-        extractFieldRecursion(superClass, set);
-    }
-
     public synchronized Set<Method> getAllMethod() {
         if (allMethod == null) {
             allMethod = Sets.newConcurrentHashSet();
@@ -563,25 +575,6 @@ public class ClassInfo<T> {
             parsed = true;
         }
         return allMethod;
-    }
-
-    /**
-     * 递归获取所有类方法，包括继承、私有、公有等
-     *
-     * @param clazz 目标类型
-     * @param set   方法结合
-     */
-    private static void extractMethodRecursion(Class<?> clazz, Set<Method> set) {
-        Method[] selfMethods = clazz.getDeclaredMethods();
-        Method[] extendMethods = clazz.getMethods();
-        set.addAll(Arrays.asList(selfMethods));
-        set.addAll(Arrays.asList(extendMethods));
-
-        Class<?> superClass = clazz.getSuperclass();
-        if (superClass == Object.class || superClass == null) {
-            return;
-        }
-        extractMethodRecursion(superClass, set);
     }
 
     public FieldInfo getFieldInfo(Field field) {

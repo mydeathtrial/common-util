@@ -1,6 +1,5 @@
 package cloud.agileframework.common.util.collection;
 
-import com.google.common.collect.Sets;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.SuperBuilder;
@@ -27,6 +26,7 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
     private SortedSet<A> children = new TreeSet<>();
 
     public TreeBase() {
+        children = new TreeSet<>();
     }
 
     /**
@@ -83,17 +83,10 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
         return i == 0 ? 1 : i;
     }
 
-    public SortedSet<A> getChildren() {
+    public void setChildren(SortedSet<A> children) {
         if (children == null) {
-            return Sets.newTreeSet();
-        }
-        return children;
-    }
-
-    public <B extends A> void setChildren(SortedSet<B> children) {
-        if(children == null){
             return;
         }
-        this.children = (SortedSet<A>) children;
+        this.children = children;
     }
 }

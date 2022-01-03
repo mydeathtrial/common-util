@@ -441,14 +441,14 @@ public class ClassUtil extends ClassUtils {
             }
         } else //不存在上下边界说明匹配任意对象，所以是任意对象父类
             if (!positive && upperBounds.length > 0) {
-            //查看clazz是不是wildcardType父类时，以wildcardType上边界匹配
-            for (Type type : upperBounds) {
-                boolean is = isAssignableFrom(type, clazz, false);
-                if (is) {
-                    return true;
+                //查看clazz是不是wildcardType父类时，以wildcardType上边界匹配
+                for (Type type : upperBounds) {
+                    boolean is = isAssignableFrom(type, clazz, false);
+                    if (is) {
+                        return true;
+                    }
                 }
-            }
-        } else return positive && upperBounds.length == 0;
+            } else return positive && upperBounds.length == 0;
 
         return false;
     }
@@ -521,7 +521,7 @@ public class ClassUtil extends ClassUtils {
         }
         if (clazz instanceof Class) {
             Type genericSuperclass = ((Class<?>) clazz).getGenericSuperclass();
-            if (genericSuperclass != null) {
+            if (genericSuperclass != null && genericSuperclass != Object.class) {
                 Type temp = getGeneric(genericSuperclass, parameterizedType, post, realTypeMapping);
                 if (temp != null) return temp;
             }
@@ -532,16 +532,17 @@ public class ClassUtil extends ClassUtils {
                     if (temp != null) return temp;
                 }
             }
-            return null;
         }
         if (clazz instanceof ParameterizedType) {
             if (((ParameterizedType) clazz).getRawType() == parameterizedType) {
                 Type type = ((ParameterizedType) clazz).getActualTypeArguments()[post];
+                if (type instanceof Class) {
+                    return type;
+                }
                 return realTypeMapping.get(type);
             }
 
             return getGeneric(((ParameterizedType) clazz).getRawType(), parameterizedType, post, realTypeMapping);
-
         }
 
         return null;

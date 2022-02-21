@@ -10,14 +10,7 @@ import com.google.common.collect.Maps;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
@@ -130,7 +123,8 @@ public class MapUtil {
      */
     public static <K, V, K1, V1> Map<K, V> toMap(Map<K1, V1> from, TypeReference<Map<K, V>> toClass) {
         Type mapType = toClass.getType();
-        if (!(mapType instanceof ParameterizedType)) {
+        mapType = mapType(mapType);
+        if (mapType == null) {
             return (Map<K, V>) from;
         }
         ParameterizedType parameterizedType = (ParameterizedType) mapType;
@@ -232,17 +226,6 @@ public class MapUtil {
     }
 
     /**
-     * 辅助枚举
-     */
-    public enum KeyOrValue {
-        /**
-         * key
-         */
-        KEY,
-        VALUE
-    }
-
-    /**
      * 按照key值排序Map
      *
      * @param map
@@ -287,7 +270,6 @@ public class MapUtil {
         return linkedHashMap;
     }
 
-
     public static void main(String[] args) {
         Map<String, Object> result = Maps.newHashMap();
         result.put("myname", "1");
@@ -297,5 +279,27 @@ public class MapUtil {
         keyFilterAndCut(result, "my", "e");
         toMap(result, new TypeReference<Map<StringBuilder, Integer>>() {
         });
+    }
+
+    private static Type mapType(Type clazz) {
+        if (clazz instanceof ParameterizedType) {
+            return clazz;
+        }
+        if (clazz instanceof Class) {
+            return mapType(((Class) clazz).getGenericSuperclass());
+        }
+        return null;
+    }
+
+
+    /**
+     * 辅助枚举
+     */
+    public enum KeyOrValue {
+        /**
+         * key
+         */
+        KEY,
+        VALUE
     }
 }

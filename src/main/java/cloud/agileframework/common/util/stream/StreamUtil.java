@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 
 /**
  * @author 佟盟
@@ -16,10 +17,10 @@ import java.io.OutputStream;
  * @since 1.0
  */
 public class StreamUtil {
+    private static final Log log = LogFactory.getLog(StreamUtil.class);
+
     private StreamUtil() {
     }
-
-    private static final Log log = LogFactory.getLog(StreamUtil.class);
 
     /**
      * 输入流转字符串
@@ -28,9 +29,19 @@ public class StreamUtil {
      * @return 字符串
      */
     public static String toString(InputStream inputStream) {
+        return toString(inputStream, Charset.defaultCharset());
+    }
+
+    /**
+     * 输入流转字符串
+     *
+     * @param inputStream 输入流
+     * @return 字符串
+     */
+    public static String toString(InputStream inputStream, Charset charset) {
         try (ByteArrayOutputStream result = new ByteArrayOutputStream()) {
             toOutputStream(inputStream, result);
-            return result.toString(System.getProperty("sun.jnu.encoding"));
+            return result.toString(charset.name());
         } catch (IOException e) {
             log.error("InputStream convert to String error", e);
         }

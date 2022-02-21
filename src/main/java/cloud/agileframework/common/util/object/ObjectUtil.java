@@ -410,8 +410,14 @@ public class ObjectUtil extends ObjectUtils {
         } else if (toClass == Character.class || toClass == char.class) {
             char[] array = valueStr.toCharArray();
             temp = array.length > 0 ? array[0] : null;
-        } else if (toClass == String.class) {
+        } else if (toClass == String.class && from.getClass().isPrimitive()) {
             temp = valueStr;
+        } else if (toClass == String.class) {
+            try {
+                temp = JSON.toJSONString(from);
+            } catch (Exception e) {
+                temp = valueStr;
+            }
         }
         return (T) temp;
     }

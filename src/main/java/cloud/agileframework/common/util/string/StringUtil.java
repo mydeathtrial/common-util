@@ -136,6 +136,10 @@ public class StringUtil extends StringUtils {
         String[] steps = toUnderline(text).split("_");
         for (int i = 0; i < steps.length; i++) {
             String step = steps[i];
+            if(step.length()<1){
+                result.append(Constant.RegularAbout.URL_REGEX);
+                continue;
+            }
             String first = step.substring(0, 1);
 
             result.append(String.format("[%s]", first.toLowerCase() + first.toUpperCase())).append(step.substring(1));

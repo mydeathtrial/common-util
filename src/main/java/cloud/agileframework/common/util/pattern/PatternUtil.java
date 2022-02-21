@@ -145,7 +145,7 @@ public class PatternUtil {
             }
             return result;
         }
-        return null;
+        return Maps.newHashMap();
     }
 
     /**

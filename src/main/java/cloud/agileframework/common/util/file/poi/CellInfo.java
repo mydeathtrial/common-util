@@ -5,7 +5,7 @@ package cloud.agileframework.common.util.file.poi;
  * @author 佟盟
  * 为POI生成excel工具提供的辅助类，该类主要负责存放表头信息
  */
-public final class Cell {
+public final class CellInfo {
     /**
      * 排位
      */
@@ -21,7 +21,7 @@ public final class Cell {
      */
     private String showName;
 
-    private Cell(Builder builder) {
+    private CellInfo(Builder builder) {
         this.sort = builder.sort;
         this.key = builder.key;
         this.showName = builder.showName;
@@ -78,8 +78,8 @@ public final class Cell {
             return this;
         }
 
-        public Cell build() {
-            return new Cell(this);
+        public CellInfo build() {
+            return new CellInfo(this);
         }
     }
 }

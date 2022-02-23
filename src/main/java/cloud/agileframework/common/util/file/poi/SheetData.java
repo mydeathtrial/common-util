@@ -9,14 +9,17 @@ import java.util.List;
  * sheet页信息
  */
 public class SheetData {
+    //sheet 页名
     private String name;
-    private List<Cell> cells;
-    private List data;
+    //字段头信息
+    private List<CellInfo> cells;
+    //所有行数据
+    private List<Object> data;
 
     public SheetData() {
     }
 
-    public SheetData(String name, List<Cell> cells, List data) {
+    public SheetData(String name, List<CellInfo> cells, List<Object> data) {
         this.name = name;
         this.cells = cells;
         this.data = data;
@@ -33,6 +36,9 @@ public class SheetData {
     }
 
     public String getName() {
+        if (name == null) {
+            return "数据";
+        }
         return name;
     }
 
@@ -40,23 +46,23 @@ public class SheetData {
         this.name = name;
     }
 
-    public List getData() {
+    public List<Object> getData() {
         return data;
     }
 
-    public void setData(List data) {
+    public void setData(List<Object> data) {
         this.data = data;
     }
 
-    public List<Cell> getCells() {
+    public List<CellInfo> getCells() {
         return cells;
     }
 
-    public void setCells(List<Cell> cells) {
+    public void setCells(List<CellInfo> cells) {
         this.cells = cells;
     }
 
-    public SheetData addCell(Cell cell) {
+    public SheetData addCell(CellInfo cell) {
         if (cells == null) {
             cells = new ArrayList<>();
         }
@@ -69,20 +75,20 @@ public class SheetData {
      */
     public static class Builder {
         private String name;
-        private List<Cell> cells;
-        private List data;
+        private List<CellInfo> cells;
+        private List<Object> data;
 
         public Builder setName(String name) {
             this.name = name;
             return this;
         }
 
-        public Builder setCells(List<Cell> cells) {
+        public Builder setCells(List<CellInfo> cells) {
             this.cells = cells;
             return this;
         }
 
-        public Builder setData(List data) {
+        public Builder setData(List<Object> data) {
             this.data = data;
             return this;
         }

@@ -12,11 +12,17 @@ public class ResponseFile {
     private String fileName;
     private String contentType;
     private InputStream inputStream;
+    private boolean isDownload = true;
 
-    public ResponseFile(String fileName, String contentType, InputStream inputStream) {
+    public ResponseFile(String fileName, String contentType, InputStream inputStream, boolean isDownload) {
         this.fileName = fileName;
         this.contentType = contentType;
         this.inputStream = inputStream;
+        this.isDownload = isDownload;
+    }
+
+    public ResponseFile(String fileName, String contentType, InputStream inputStream) {
+        this(fileName, contentType, inputStream, true);
     }
 
     public ResponseFile(String fileName, String contentType, File file) throws FileNotFoundException {
@@ -49,5 +55,13 @@ public class ResponseFile {
 
     public void setInputStream(InputStream inputStream) {
         this.inputStream = inputStream;
+    }
+
+    public boolean isDownload() {
+        return isDownload;
+    }
+
+    public void setDownload(boolean download) {
+        isDownload = download;
     }
 }

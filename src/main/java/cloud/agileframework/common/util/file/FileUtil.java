@@ -24,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -210,6 +211,11 @@ public class FileUtil extends FileUtils {
             downloadFile((ExcelFile) v, request, response);
         } else if (ResponseFile.class.isAssignableFrom(v.getClass())) {
             ResponseFile temp = (ResponseFile) v;
+            if(!temp.isDownload()){
+                response.setCharacterEncoding(Charset.defaultCharset().name());
+                inWriteOut(temp.getInputStream(), response.getOutputStream());
+                return;
+            }
             downloadFile(temp.getFileName(), temp.getContentType(), temp.getInputStream(), request, response);
         } else if (File.class.isAssignableFrom(v.getClass())) {
             downloadFile((File) v, request, response);

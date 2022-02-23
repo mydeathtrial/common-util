@@ -14,6 +14,10 @@ import cloud.agileframework.common.util.number.NumberUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.annotation.JSONField;
+import com.alibaba.fastjson.parser.DefaultJSONParser;
+import com.alibaba.fastjson.parser.ParserConfig;
+import com.alibaba.fastjson.parser.deserializer.ObjectDeserializer;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.commons.collections4.CollectionUtils;
@@ -473,6 +477,19 @@ public class ObjectUtil extends ObjectUtils {
 
         final Class<?> typeTpye = field.getType();
         if (value != null) {
+            JSONField annotation = field.getAnnotation(JSONField.class);
+            if (annotation != null && annotation.deserializeUsing() != null) {
+                try {
+                    ObjectDeserializer deserializer = (ObjectDeserializer) ClassUtil.newInstance(annotation.deserializeUsing());
+                    assert deserializer != null;
+                    Object v = deserializer.deserialze(new DefaultJSONParser(JSON.toJSONString(value), ParserConfig.global, JSON.DEFAULT_PARSER_FEATURE), field.getType(), field.getName());
+                    if (v != null) {
+                        setValueIfNotNull(object, field, v);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+
             FieldInfo fieldInfo = ClassInfo.getCache(objectClass).getFieldInfo(field);
 
             // 如果set方法还未初始化，则开始初始化

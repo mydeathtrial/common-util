@@ -3,6 +3,7 @@ package cloud.agileframework.common.util.file;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.file.poi.ExcelFile;
 import cloud.agileframework.common.util.string.StringUtil;
+import com.google.common.collect.Maps;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 
@@ -30,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -146,17 +146,16 @@ public class FileUtil extends FileUtils {
         return result;
     }
 
-    public static void downloadFile(String fileName, String contentType, InputStream stream, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    public static void downloadFile(String fileName, InputStream stream, HttpServletRequest request, HttpServletResponse response) throws IOException {
         setContentLength(stream, response);
         setContentDisposition(fileName, request, response);
-        response.setContentType(contentType == null ? "application/octet-stream" : contentType);
         ServletOutputStream outputStream = response.getOutputStream();
         inWriteOut(stream, response.getOutputStream());
         outputStream.close();
     }
 
-    public static void downloadFile(String fileName, String contentType, File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        downloadFile(fileName, contentType, new FileInputStream(file), request, response);
+    public static void downloadFile(String fileName, File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        downloadFile(fileName, new FileInputStream(file), request, response);
     }
 
     private static void setContentLength(InputStream stream, HttpServletResponse response) throws IOException {
@@ -177,7 +176,7 @@ public class FileUtil extends FileUtils {
     }
 
     public static void downloadFile(File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        downloadFile(file.getName(), new MimetypesFileTypeMap().getContentType(file), file, request, response);
+        downloadFile(file.getName(),  file, request, response);
     }
 
     public static void downloadFile(ExcelFile excelFile, HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -211,13 +210,28 @@ public class FileUtil extends FileUtils {
             downloadFile((ExcelFile) v, request, response);
         } else if (ResponseFile.class.isAssignableFrom(v.getClass())) {
             ResponseFile temp = (ResponseFile) v;
-            if(!temp.isDownload()){
+            Map<String, String> head = temp.getHead();
+            if (!head.isEmpty()) {
+                for (Map.Entry<String, String> entry : head.entrySet()) {
+                    response.setHeader(entry.getKey(), entry.getValue());
+                }
+            }
+
+            String contentType = temp.getContentType();
+            if(contentType == null){
+                contentType = "application/octet-stream";
+            }
+            response.setContentType(contentType);
+            
+            if (!temp.isDownload()) {
                 response.setCharacterEncoding(Charset.defaultCharset().name());
                 inWriteOut(temp.getInputStream(), response.getOutputStream());
                 return;
             }
-            downloadFile(temp.getFileName(), temp.getContentType(), temp.getInputStream(), request, response);
+            
+            downloadFile(temp.getFileName(), temp.getInputStream(), request, response);
         } else if (File.class.isAssignableFrom(v.getClass())) {
+            response.setContentType(new MimetypesFileTypeMap().getContentType((File) v));
             downloadFile((File) v, request, response);
         }
     }
@@ -229,7 +243,8 @@ public class FileUtil extends FileUtils {
             createZipFile(fileList, new FileOutputStream(zip));
             FileInputStream in = new FileInputStream(zip);
             inWriteOut(in, out);
-            downloadFile("download.zip", "application/octet-stream", new ByteArrayInputStream(out.toByteArray()), request, response);
+            response.setContentType("application/octet-stream");
+            downloadFile("download.zip", new ByteArrayInputStream(out.toByteArray()), request, response);
             out.close();
             boolean isDelete = zip.delete();
             if (!isDelete) {
@@ -239,7 +254,7 @@ public class FileUtil extends FileUtils {
     }
 
     public static void createZip(List<?> fileList, String dir, String zipFileName) throws IOException {
-        if(!zipFileName.toLowerCase().endsWith(".zip")){
+        if (!zipFileName.toLowerCase().endsWith(".zip")) {
             zipFileName = zipFileName + ".zip";
         }
         File zip = createFile(dir, zipFileName);

@@ -28,9 +28,29 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.*;
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Queue;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -155,7 +175,6 @@ public class ObjectUtil extends ObjectUtils {
         return result;
     }
 
-
     /**
      * 转换为枚举类型
      *
@@ -182,6 +201,10 @@ public class ObjectUtil extends ObjectUtils {
 
             if (targetName != null) {
                 result = (T) EnumUtils.getEnum(enumClass, targetName);
+            }
+
+            if (targetName == null) {
+                result = (T) map.values().stream().filter(a -> sourceName.endsWith(a.toString())).findFirst().orElse(null);
             }
         }
         return result;
@@ -389,7 +412,16 @@ public class ObjectUtil extends ObjectUtils {
 
         String valueStr = from.toString();
         if (NumberUtil.isNumber(toClass)) {
-            Number number = NumberUtils.createNumber(valueStr);
+            Number number;
+            if (from instanceof Boolean) {
+                number = (Boolean) from ? 1 : 0;
+            } else if ("true".equalsIgnoreCase(valueStr)) {
+                number = 1;
+            } else if ("false".equalsIgnoreCase(valueStr)) {
+                number = 0;
+            } else {
+                number = NumberUtils.createNumber(valueStr);
+            }
             if (toClass == Short.class || toClass == short.class) {
                 temp = number.shortValue();
             } else if (toClass == Integer.class || toClass == int.class) {
@@ -485,6 +517,7 @@ public class ObjectUtil extends ObjectUtils {
                     Object v = deserializer.deserialze(new DefaultJSONParser(JSON.toJSONString(value), ParserConfig.global, JSON.DEFAULT_PARSER_FEATURE), field.getType(), field.getName());
                     if (v != null) {
                         setValueIfNotNull(object, field, v);
+                        return;
                     }
                 } catch (Exception ignored) {
                 }
@@ -589,6 +622,7 @@ public class ObjectUtil extends ObjectUtils {
         if (value != null && v == null) {
             throw new RuntimeException();
         }
+
         field.set(object, v);
     }
 
@@ -1170,25 +1204,33 @@ public class ObjectUtil extends ObjectUtils {
         T result = null;
         T fieldDeclaredAnnotations = field.getDeclaredAnnotation(annotation);
         if (fieldDeclaredAnnotations != null) {
-            result = fieldDeclaredAnnotations;
+            return fieldDeclaredAnnotations;
         }
 
         T fieldAnnotations = field.getAnnotation(annotation);
         if (fieldAnnotations != null) {
-            result = fieldAnnotations;
+            return fieldAnnotations;
         }
 
         String getMethodName = String.format("get%s", StringUtil.toUpperName(field.getName()));
-        Method declaredMethod = clazz.getDeclaredMethod(getMethodName);
-        T methodDeclaredAnnotations = declaredMethod.getDeclaredAnnotation(annotation);
-        if (methodDeclaredAnnotations != null) {
-            result = methodDeclaredAnnotations;
+        try {
+            Method declaredMethod = clazz.getDeclaredMethod(getMethodName);
+            T methodDeclaredAnnotations = declaredMethod.getDeclaredAnnotation(annotation);
+            if (methodDeclaredAnnotations != null) {
+                return methodDeclaredAnnotations;
+            }
+        } catch (Exception ignored) {
+
         }
 
-        Method method = clazz.getMethod(getMethodName);
-        T methodAnnotations = method.getAnnotation(annotation);
-        if (methodAnnotations != null) {
-            result = methodAnnotations;
+        try {
+            Method method = clazz.getMethod(getMethodName);
+            T methodAnnotations = method.getAnnotation(annotation);
+            if (methodAnnotations != null) {
+                return methodAnnotations;
+            }
+        } catch (Exception ignored) {
+
         }
 
         return result;

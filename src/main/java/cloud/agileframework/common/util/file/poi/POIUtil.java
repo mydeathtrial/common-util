@@ -245,32 +245,31 @@ public class POIUtil {
     }
 
     private static Object getValue(Cell cell) {
-        Object value = null;
         try {
-            value = cell.getStringCellValue();
+            return cell.getStringCellValue();
         } catch (Exception ignored) {
         }
 
         try {
-            value = cell.getBooleanCellValue();
+            return cell.getBooleanCellValue();
         } catch (Exception ignored) {
         }
 
         try {
-            value = cell.getNumericCellValue();
+            return cell.getNumericCellValue();
         } catch (Exception ignored) {
         }
 
         try {
-            value = cell.getDateCellValue();
+            return cell.getDateCellValue();
         } catch (Exception ignored) {
         }
 
         try {
-            value = cell.getErrorCellValue();
+            return cell.getErrorCellValue();
         } catch (Exception ignored) {
         }
-        return value;
+        return null;
     }
 
     private static Workbook parsing(Object file) {

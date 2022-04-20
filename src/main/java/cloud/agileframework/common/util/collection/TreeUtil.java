@@ -62,6 +62,9 @@ public class TreeUtil {
             fullFieldSet.forEach(b -> {
                 wrapperList.parallelStream().forEach(a -> {
                     Object v = a.getFull(b, splitChar);
+                    if(v == null){
+                        return;
+                    }
                     cache.put(v, (T) a.getCurrent());
                 });
                 cache.entrySet().parallelStream().forEach(e -> ObjectUtil.setValue(e.getValue(), b, e.getKey()));

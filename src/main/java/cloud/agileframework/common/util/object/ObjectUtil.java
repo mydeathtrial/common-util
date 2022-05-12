@@ -9,6 +9,7 @@ import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.clazz.FieldInfo;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.date.DateUtil;
+import cloud.agileframework.common.util.json.JSONUtil;
 import cloud.agileframework.common.util.map.MapUtil;
 import cloud.agileframework.common.util.number.NumberUtil;
 import cloud.agileframework.common.util.string.StringUtil;
@@ -695,11 +696,11 @@ public class ObjectUtil extends ObjectUtils {
         while (resultIt.hasNext()) {
             Map.Entry<Field, Set<Field>> e = resultIt.next();
 
-            Field fromField = e.getKey();
-            Set<Field> toFields = e.getValue();
+            Field toField = e.getKey();
+            Set<Field> fromFields = e.getValue();
 
             boolean is = false;
-            for (Field toField : toFields) {
+            for (Field fromField : fromFields) {
                 Object sourceValue = getFieldValue(source, fromField);
                 Object targetValue = getFieldValue(target, toField);
                 switch (compare) {
@@ -848,13 +849,24 @@ public class ObjectUtil extends ObjectUtils {
         Map<Field, Set<String>> sourceMap = parseFieldAlias(sourceClass);
         Map<Field, Set<String>> targetMap = parseFieldAlias(targetClass);
 
-        sourceMap.entrySet().parallelStream().filter(e -> {
+//        sourceMap.entrySet().parallelStream().filter(e -> {
+//            final String name = e.getKey().getName();
+//            return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
+//        }).forEach(e -> {
+//            Set<String> sourceAlias = e.getValue();
+//            Set<Field> set = targetMap.entrySet().parallelStream().filter(te ->
+//                    !CollectionUtils.retainAll(te.getValue(), sourceAlias).isEmpty()
+//            ).map(Map.Entry::getKey).collect(Collectors.toSet());
+//            map.put(e.getKey(), set);
+//        });
+
+        targetMap.entrySet().parallelStream().filter(e -> {
             final String name = e.getKey().getName();
             return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
         }).forEach(e -> {
-            Set<String> sourceAlias = e.getValue();
-            Set<Field> set = targetMap.entrySet().parallelStream().filter(te ->
-                    !CollectionUtils.retainAll(te.getValue(), sourceAlias).isEmpty()
+            Set<String> targetAlias = e.getValue();
+            Set<Field> set = sourceMap.entrySet().parallelStream().filter(te ->
+                    !CollectionUtils.retainAll(te.getValue(), targetAlias).isEmpty()
             ).map(Map.Entry::getKey).collect(Collectors.toSet());
             map.put(e.getKey(), set);
         });
@@ -954,26 +966,40 @@ public class ObjectUtil extends ObjectUtils {
         argumentsMap.entrySet()
                 .forEach(e -> {
                     try {
-                        final Field fromField = e.getKey();
-
-                        switch (containOrExclude) {
-                            case EXCLUDE:
-                                if (ArrayUtils.contains(arguments, fromField.getName())) {
-                                    return;
+                        Field toField = e.getKey();
+                        if (e.getValue().isEmpty()) {
+                            Alias alias = ClassUtil.getFieldAnnotation(target.getClass(), toField.getName(), Alias.class);
+                            if (alias != null) {
+                                for (String alia : alias.value()) {
+                                    Object value = JSONUtil.pathGet(alia, source);
+                                    Type type = toField.getGenericType();
+                                    TypeReference<Object> typeReference = new TypeReference<>(type);
+                                    if (value != null) {
+                                        value = to(value, typeReference);
+                                    }
+                                    setValue(target, toField, value);
                                 }
-                                break;
-                            case INCLUDE:
-                                if (!ArrayUtils.contains(arguments, fromField.getName())) {
-                                    return;
-                                }
-                                break;
-                            default:
+                            }
+                            return;
                         }
+                        for (Field fromField : e.getValue()) {
 
-                        Object value = fromField.get(source);
+                            switch (containOrExclude) {
+                                case EXCLUDE:
+                                    if (ArrayUtils.contains(arguments, fromField.getName())) {
+                                        return;
+                                    }
+                                    break;
+                                case INCLUDE:
+                                    if (!ArrayUtils.contains(arguments, fromField.getName())) {
+                                        return;
+                                    }
+                                    break;
+                                default:
+                            }
 
-                        Set<Field> toFields = e.getValue();
-                        for (Field toField : toFields) {
+                            Object value = fromField.get(source);
+
                             Type type = toField.getGenericType();
                             TypeReference<Object> typeReference = new TypeReference<>(type);
                             if (value != null) {
@@ -981,6 +1007,7 @@ public class ObjectUtil extends ObjectUtils {
                             }
                             setValue(target, toField, value);
                         }
+
 
                     } catch (Exception ignored) {
 

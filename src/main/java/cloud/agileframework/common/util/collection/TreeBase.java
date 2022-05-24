@@ -16,7 +16,6 @@ import java.util.TreeSet;
  * @version 1.0
  * @since 1.0
  */
-@Data
 @SuperBuilder(toBuilder = true)
 public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implements Comparable<TreeBase<I, A>>, Serializable {
     private I id;
@@ -88,5 +87,33 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
             return;
         }
         this.children = children;
+    }
+
+    public I getId() {
+        return id;
+    }
+
+    public void setId(I id) {
+        this.id = id;
+    }
+
+    public I getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(I parentId) {
+        this.parentId = parentId;
+    }
+
+    public Integer getSort() {
+        return sort;
+    }
+
+    public void setSort(Integer sort) {
+        this.sort = sort;
+    }
+
+    public SortedSet<A> getChildren() {
+        return children;
     }
 }

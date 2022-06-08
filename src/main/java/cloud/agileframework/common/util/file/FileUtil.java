@@ -166,8 +166,9 @@ public class FileUtil extends FileUtils {
         String contentDisposition;
         final String userAgent = "User-Agent";
         final String firefox = "firefox";
-        final boolean isFireFox = request.getHeader(userAgent).toLowerCase().contains(firefox);
-        if (isFireFox) {
+        final String postman = "postman";
+        String lowerUserAgent = request.getHeader(userAgent).toLowerCase();
+        if (lowerUserAgent.contains(firefox) || lowerUserAgent.contains(postman)) {
             contentDisposition = String.format("attachment; filename=\"%s\"", "=?UTF-8?B?" + (new String(Base64.encodeBase64(fileName.getBytes(StandardCharsets.UTF_8)))) + "?=");
         } else {
             contentDisposition = String.format("attachment; filename=\"%s\"", URLEncoder.encode(fileName, "UTF-8"));
@@ -176,7 +177,7 @@ public class FileUtil extends FileUtils {
     }
 
     public static void downloadFile(File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        downloadFile(file.getName(),  file, request, response);
+        downloadFile(file.getName(), file, request, response);
     }
 
     public static void downloadFile(ExcelFile excelFile, HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -218,17 +219,17 @@ public class FileUtil extends FileUtils {
             }
 
             String contentType = temp.getContentType();
-            if(contentType == null){
-                contentType = "application/octet-stream";
+            if (contentType == null) {
+                contentType = "application/octet-stream;charset=UTF-8";
             }
             response.setContentType(contentType);
-            
+
             if (!temp.isDownload()) {
                 response.setCharacterEncoding(Charset.defaultCharset().name());
                 inWriteOut(temp.getInputStream(), response.getOutputStream());
                 return;
             }
-            
+
             downloadFile(temp.getFileName(), temp.getInputStream(), request, response);
         } else if (File.class.isAssignableFrom(v.getClass())) {
             response.setContentType(new MimetypesFileTypeMap().getContentType((File) v));
@@ -243,7 +244,7 @@ public class FileUtil extends FileUtils {
             createZipFile(fileList, new FileOutputStream(zip));
             FileInputStream in = new FileInputStream(zip);
             inWriteOut(in, out);
-            response.setContentType("application/octet-stream");
+            response.setContentType("application/octet-stream;charset=UTF-8");
             downloadFile("download.zip", new ByteArrayInputStream(out.toByteArray()), request, response);
             out.close();
             boolean isDelete = zip.delete();

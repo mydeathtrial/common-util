@@ -11,6 +11,7 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -19,6 +20,7 @@ import java.io.FileInputStream;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * @author 佟盟 on 2018/10/16
@@ -54,7 +56,6 @@ public class POIUtil {
         for (SheetData sheetDatum : sheetData) {
             creatSheet(excel, sheetDatum);
         }
-
         return excel;
     }
 
@@ -66,6 +67,9 @@ public class POIUtil {
      */
     private static void creatSheet(Workbook excel, SheetData sheetData) {
         Sheet sheet = excel.createSheet(sheetData.getName());
+        if(sheet instanceof SXSSFSheet){
+            ((SXSSFSheet) sheet).trackAllColumnsForAutoSizing();
+        }
         int currentRowIndex = 0;
         //创建字段头
         List<CellInfo> headerColumns = sheetData.getCells();
@@ -228,17 +232,21 @@ public class POIUtil {
                 if (rowNum == 0) {
                     columnInfo.add(columnMapping.get(cell.getStringCellValue()));
                 } else if (rowNum > 0) {
+                    int dataCellIndex = cell.getColumnIndex();
+                    for (int i = 0; i < dataCellIndex - cellNum; i++) {
+                        rowData.put(columnInfo.get(cellNum++), null);
+                    }
                     rowData.put(columnInfo.get(cellNum++), getValue(cell));
                 }
             }
             rowNum++;
-            
+
             T row = ObjectUtil.to(rowData, typeReference);
             if (row == null) {
                 continue;
             }
             list.add(row);
-            
+
         }
 
         return list;

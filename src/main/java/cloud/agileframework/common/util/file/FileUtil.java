@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -352,5 +353,34 @@ public class FileUtil extends FileUtils {
      */
     public static boolean isIllegalDirName(String dirName) {
         return dirName.matches("(.*)([\\\\/.~:*?\"<>|])(.*)");
+    }
+
+    /**
+     * 统一路径中的斜杠
+     *
+     * @param str 路径
+     * @return 处理后的合法路径
+     */
+    public static String parseFilePath(String str) {
+        String url = str.replaceAll("[\\\\/]+", Matcher.quoteReplacement(File.separator));
+        if (!url.endsWith(File.separator)) {
+            url += File.separator;
+        }
+        return url;
+    }
+
+    /**
+     * 统一路径中的斜杠
+     *
+     * @param str 路径
+     * @return 处理后的合法路径
+     */
+    public static String parseClassPath(String str) {
+        String prefix = "/";
+        String url = str.replaceAll("[\\\\/]+", prefix);
+        if (!url.startsWith(prefix)) {
+            url = prefix + url;
+        }
+        return url;
     }
 }

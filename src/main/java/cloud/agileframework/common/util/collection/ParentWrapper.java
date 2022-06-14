@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
+import java.util.Objects;
 
 /**
  * @author 佟盟
@@ -20,6 +21,13 @@ public class ParentWrapper<I extends Serializable, A extends TreeBase<I, A>> {
 
     public ParentWrapper(TreeBase<I, A> current) {
         this.current = current;
+    }
+
+    public void setParent(ParentWrapper<I, A> parent) {
+        if (Objects.equals(parent, this)) {
+            throw new IllegalArgumentException("父节点与子节点不能相同");
+        }
+        this.parent = parent;
     }
 
     /**

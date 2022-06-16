@@ -74,7 +74,7 @@ public class TreeUtil {
         return nodes.parallelStream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(Sets::newTreeSet));
     }
 
-    public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> list, A rootValue, String splitChar, String... fullFields) {
+    public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<T> list, A rootValue, String splitChar, String... fullFields) {
         if (!list.isEmpty()) {
             T entity = list.stream().findAny().get();
             Class<T> tClass = (Class<T>) entity.getClass();
@@ -90,7 +90,7 @@ public class TreeUtil {
         return new TreeSet<>();
     }
 
-    public static <A extends Serializable, T extends TreeBase<A, T>, B extends T> SortedSet<B> createTree(Collection<B> list, A rootValue) {
+    public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<T> list, A rootValue) {
         return createTree(list, rootValue, Constant.RegularAbout.SPOT);
     }
 }

@@ -6,21 +6,32 @@ import cloud.agileframework.common.util.file.FileUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.poi.hssf.usermodel.HSSFClientAnchor;
+import org.apache.poi.hssf.usermodel.HSSFRichTextString;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.ClientAnchor;
+import org.apache.poi.ss.usermodel.Comment;
+import org.apache.poi.ss.usermodel.Drawing;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.RichTextString;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import org.apache.poi.xssf.usermodel.XSSFComment;
+import org.apache.poi.xssf.usermodel.XSSFRichTextString;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * @author 佟盟 on 2018/10/16
@@ -67,7 +78,7 @@ public class POIUtil {
      */
     private static void creatSheet(Workbook excel, SheetData sheetData) {
         Sheet sheet = excel.createSheet(sheetData.getName());
-        if(sheet instanceof SXSSFSheet){
+        if (sheet instanceof SXSSFSheet) {
             ((SXSSFSheet) sheet).trackAllColumnsForAutoSizing();
         }
         int currentRowIndex = 0;
@@ -180,12 +191,12 @@ public class POIUtil {
 
 
     public static <T> List<T> readExcel(TypeReference<T> typeReference, File file, List<CellInfo> columns) {
-        Workbook excel = parsing(file);
+        Workbook excel = readFile(file);
         return readExcel(typeReference, columns, excel);
 
     }
 
-    protected static <T> List<T> readExcel(TypeReference<T> typeReference, List<CellInfo> columns, Workbook excel) {
+    public static <T> List<T> readExcel(TypeReference<T> typeReference, List<CellInfo> columns, Workbook excel) {
         if (excel == null) {
             return Lists.newArrayList();
         }
@@ -197,13 +208,39 @@ public class POIUtil {
         return list;
     }
 
-    protected static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet) {
+    public static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet) {
         return readSheet(new TypeReference<Map<String, Object>>() {
         }, columns, sheet);
     }
 
-    protected static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet) {
+    public static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet) {
         return readSheet(new TypeReference<T>(clazz), columns, sheet);
+    }
+
+    /**
+     * 按顺序提取每一列字段对应的code列表
+     * @param columns 字段信息
+     * @param sheet sheet页
+     * @return 字段信息列表
+     */
+    public static List<String> readColumnInfo(List<CellInfo> columns, Sheet sheet) {
+        Map<String, String> columnMapping = columns.stream().collect(Collectors.toMap(CellInfo::getShowName, CellInfo::getKey));
+        if (columnMapping.isEmpty()) {
+            return Lists.newArrayList();
+        }
+        Iterator<Row> rows = sheet.rowIterator();
+        List<String> columnInfo = Lists.newLinkedList();
+        if (!rows.hasNext()) {
+            return Lists.newArrayList();
+        }
+        Row row = rows.next();
+
+        Iterator<Cell> cells = row.cellIterator();
+        while (cells.hasNext()) {
+            Cell cell = cells.next();
+            columnInfo.add(columnMapping.get(cell.getStringCellValue()));
+        }
+        return columnInfo;
     }
 
     /**
@@ -212,47 +249,45 @@ public class POIUtil {
      * @param columns 映射字段
      * @param sheet   sheet页
      */
-    protected static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet) {
+    public static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet) {
         List<T> list = Lists.newArrayList();
-
-        Map<String, String> columnMapping = columns.stream().collect(Collectors.toMap(CellInfo::getShowName, CellInfo::getKey));
-        if (columnMapping.isEmpty()) {
+        List<String> columnInfo = readColumnInfo(columns,sheet);
+        if(columnInfo.isEmpty()){
             return list;
         }
+        
         Iterator<Row> rows = sheet.rowIterator();
-        List<String> columnInfo = Lists.newLinkedList();
         int rowNum = 0;
         while (rows.hasNext()) {
-            int cellNum = 0;
-
-            LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
-            Iterator<Cell> cells = rows.next().cellIterator();
-            while (cells.hasNext()) {
-                Cell cell = cells.next();
-                if (rowNum == 0) {
-                    columnInfo.add(columnMapping.get(cell.getStringCellValue()));
-                } else if (rowNum > 0) {
-                    int dataCellIndex = cell.getColumnIndex();
-                    for (int i = 0; i < dataCellIndex - cellNum; i++) {
-                        rowData.put(columnInfo.get(cellNum++), null);
-                    }
-                    rowData.put(columnInfo.get(cellNum++), getValue(cell));
-                }
+            if (rowNum != 0) {
+                Row row = rows.next();
+                T result = readRow(typeReference, columnInfo, row);
+                if (result == null) continue;
+                list.add(result);
             }
             rowNum++;
-
-            T row = ObjectUtil.to(rowData, typeReference);
-            if (row == null) {
-                continue;
-            }
-            list.add(row);
-
         }
 
         return list;
     }
 
-    private static Object getValue(Cell cell) {
+    public static <T> T readRow(TypeReference<T> typeReference, List<String> columnInfo, Row row) {
+        LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
+        int cellNum = 0;
+        Iterator<Cell> cells = row.cellIterator();
+        while (cells.hasNext()) {
+            Cell cell = cells.next();
+
+            int dataCellIndex = cell.getColumnIndex();
+            for (int i = 0; i < dataCellIndex - cellNum; i++) {
+                rowData.put(columnInfo.get(cellNum++), null);
+            }
+            rowData.put(columnInfo.get(cellNum++), getValue(cell));
+        }
+        return ObjectUtil.to(rowData, typeReference);
+    }
+
+    public static Object getValue(Cell cell) {
         try {
             return cell.getStringCellValue();
         } catch (Exception ignored) {
@@ -280,7 +315,7 @@ public class POIUtil {
         return null;
     }
 
-    private static Workbook parsing(Object file) {
+    public static Workbook readFile(Object file) {
         Workbook result = null;
         if (file instanceof File) {
             String[] s = ((File) file).getName().split("[.]");
@@ -292,17 +327,73 @@ public class POIUtil {
             }
             try {
                 final String xls = "xls";
+                Path path = ((File) file).toPath();
                 if (xls.equals(suffix)) {
-                    result = new HSSFWorkbook(new FileInputStream((File) file));
+                    result = new HSSFWorkbook(Files.newInputStream(path));
                 } else {
-                    result = new XSSFWorkbook(new FileInputStream((File) file));
+                    result = new XSSFWorkbook(Files.newInputStream(path));
                 }
             } catch (Exception e) {
-                result = null;
+                throw new RuntimeException(e);
             }
         }
 
         return result;
+    }
+
+    public static void removeRow(Sheet sheet, int rowIndex) {
+        int lastRowNum = sheet.getLastRowNum();
+        if (rowIndex >= 0 && rowIndex < lastRowNum) {
+            sheet.shiftRows(rowIndex + 1, lastRowNum, -1);
+        }
+        if (rowIndex == lastRowNum) {
+            Row removingRow = sheet.getRow(rowIndex);
+            if (removingRow != null) {
+                sheet.removeRow(removingRow);
+            }
+        }
+    }
+
+    /**
+     * 单元格赋值，携带字体
+     * @param workbook 表格
+     * @param cell 单元格
+     * @param value 值
+     * @param font 字体
+     */
+    public static void addCellValue(Workbook workbook,Cell cell, String value, Font font){
+        RichTextString text = workbook.getCreationHelper().createRichTextString(value);
+        text.applyFont(font);
+        cell.setCellValue(text);
+    }
+
+    /**
+     * 给Cell添加批注
+     *
+     * @param cell 单元格
+     * @param value 批注内容
+     * @param workbook 表格
+     */
+    public static void addComment(Workbook workbook,Cell cell, String value) {
+        Sheet sheet = cell.getSheet();
+        cell.removeCellComment();
+        ClientAnchor anchor = workbook.getCreationHelper().createClientAnchor();
+        RichTextString text = workbook.getCreationHelper().createRichTextString(value);
+        anchor.setDx1(0);
+        anchor.setDx2(0);
+        anchor.setDy1(0);
+        anchor.setDy2(0);
+        anchor.setCol1(cell.getColumnIndex());
+        anchor.setRow1(cell.getRowIndex());
+        anchor.setCol2(cell.getColumnIndex() + 2);
+        anchor.setRow2(cell.getRowIndex() + 2);
+        // 结束
+        Drawing<?> drawing = sheet.createDrawingPatriarch();
+        Comment comment = drawing.createCellComment(anchor);
+        // 输入批注信息
+        comment.setString(text);
+        // 将批注添加到单元格对象中
+        cell.setCellComment(comment);
     }
 
     /**

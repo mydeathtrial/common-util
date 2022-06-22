@@ -136,7 +136,7 @@ public class StringUtil extends StringUtils {
         String[] steps = toUnderline(text).split("_");
         for (int i = 0; i < steps.length; i++) {
             String step = steps[i];
-            if(step.length()<1){
+            if (step.length() < 1) {
                 result.append(Constant.RegularAbout.URL_REGEX);
                 continue;
             }
@@ -474,5 +474,23 @@ public class StringUtil extends StringUtils {
         }
 
         return path.substring(extIndex + 1);
+    }
+
+    /**
+     * 判断是否包含中文
+     */
+    public static boolean isContainChinese(String source) {
+        Pattern p = Pattern.compile("[\u4e00-\u9fa5]");
+        Matcher m = p.matcher(source);
+        return m.find();
+    }
+
+    /**
+     * 判断是否是中文
+     */
+    public static boolean isChinese(String source) {
+        Pattern p = Pattern.compile("[\u4e00-\u9fa5]*");
+        Matcher m = p.matcher(source);
+        return m.matches();
     }
 }

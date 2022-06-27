@@ -64,7 +64,7 @@ public class JSONUtil extends JSON {
      * @param json JSONObject数据
      * @return List Map结构
      */
-    private static Map<String, Object> jsonObjectCoverMap(JSONObject json) {
+    public static Map<String, Object> jsonObjectCoverMap(JSONObject json) {
 
         if (json == null) {
             return null;
@@ -92,7 +92,7 @@ public class JSONUtil extends JSON {
      * @param jsonArray JSONArray数据
      * @return List Map结构
      */
-    private static List<Object> jsonArrayCoverArray(JSONArray jsonArray) {
+    public static List<Object> jsonArrayCoverArray(JSONArray jsonArray) {
         if (jsonArray == null) {
             return null;
         }

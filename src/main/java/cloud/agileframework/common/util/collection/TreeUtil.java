@@ -4,11 +4,11 @@ import cloud.agileframework.common.constant.Constant;
 import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -38,7 +38,7 @@ public class TreeUtil {
             if (child == null) {
                 return;
             }
-            node.setChildren(Sets.newTreeSet(child));
+            node.setChildren(new ConcurrentSkipListSet<>(child));
         });
 
         //计算full属性值，借助ParentWrapper包裹，通过引用实现快速计算
@@ -71,7 +71,7 @@ public class TreeUtil {
                 cache.clear();
             });
         }
-        return nodes.parallelStream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(Sets::newTreeSet));
+        return nodes.parallelStream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(ConcurrentSkipListSet::new));
     }
 
     public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<T> list, A rootValue, String splitChar, String... fullFields) {
@@ -87,7 +87,7 @@ public class TreeUtil {
             return createTree(list, rootValue, splitChar, fullFieldSet);
         }
 
-        return new TreeSet<>();
+        return new ConcurrentSkipListSet<>();
     }
 
     public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<T> list, A rootValue) {

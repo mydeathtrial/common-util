@@ -1,13 +1,12 @@
 package cloud.agileframework.common.util.collection;
 
 import lombok.Builder;
-import lombok.Data;
 import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * @author 佟盟
@@ -22,10 +21,10 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
     private I parentId;
     private Integer sort;
     @Builder.Default
-    private SortedSet<A> children = new TreeSet<>();
+    private SortedSet<A> children = new ConcurrentSkipListSet<>();
 
     public TreeBase() {
-        children = new TreeSet<>();
+        children = new ConcurrentSkipListSet<>();
     }
 
     /**

@@ -10,16 +10,16 @@ import org.nustaq.serialization.FSTConfiguration;
  * @since 1.0
  */
 public final class FstUtil {
-	private FstUtil() {
-	}
+    private FstUtil() {
+    }
 
-	private static final FSTConfiguration CONF = FSTConfiguration.createDefaultConfiguration();
+    private static final FSTConfiguration CONF = FSTConfiguration.createDefaultConfiguration();
 
-	public static byte[] serialize(Object object) {
-		return CONF.asByteArray(object);
-	}
+    public static byte[] serialize(Object object) {
+        return CONF.asByteArray(object);
+    }
 
-	public static Object deserialize(byte[] bytes) {
-		return CONF.asObject(bytes);
-	}
+    public static Object deserialize(byte[] bytes) {
+        return CONF.asObject(bytes);
+    }
 }

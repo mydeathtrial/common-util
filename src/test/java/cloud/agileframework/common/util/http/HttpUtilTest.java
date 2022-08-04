@@ -12,8 +12,8 @@ public class HttpUtilTest extends TestCase {
 
     public void testPost() {
         HashMap<Object, Object> map = Maps.newHashMap();
-        map.put("a","1");
-        map.put("b","2");
-        HttpUtil.post("www.baidu.com",map);
+        map.put("a", "1");
+        map.put("b", "2");
+        HttpUtil.post("www.baidu.com", map);
     }
 }

@@ -10,7 +10,14 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -98,7 +105,7 @@ public class TreeUtil {
     }
 
     public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTreeByNodeIds(Collection<? extends T> all, Collection<A> ids, A rootValue) {
-        return createTreeByNodeIds(all, ids, rootValue, Constant.RegularAbout.DIC_SPLIT);
+        return createTreeByNodeIds(all, ids, rootValue, Constant.AgileAbout.DIC_SPLIT);
     }
 
     /**

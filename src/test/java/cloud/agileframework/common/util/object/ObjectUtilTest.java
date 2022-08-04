@@ -12,7 +12,7 @@ import org.junit.Test;
  */
 public class ObjectUtilTest {
     @Test
-    public void compare(){
+    public void compare() {
         final O1 source = new O1("tudou", 12, Lists.newArrayList("李磊", "张娜拉"));
 
         final O1 target = new O1("tudou", 11, Lists.newArrayList("李磊", "张天爱"));

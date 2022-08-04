@@ -19,14 +19,14 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class O1 {
-    @Remark(value = "姓名",ignoreCompare = false)
+    @Remark(value = "姓名", ignoreCompare = false)
     private String name;
-    @Remark(value = "年龄",ignoreCompare = false)
+    @Remark(value = "年龄", ignoreCompare = false)
     private int age;
-    @Remark(value = "朋友",ignoreCompare = false)
+    @Remark(value = "朋友", ignoreCompare = false)
     private List<String> friends;
     @CompareField
-    @Remark(value = "媳妇儿",ignoreCompare = false)
+    @Remark(value = "媳妇儿", ignoreCompare = false)
     private O1 o1;
 
     public O1(String name, int age, List<String> friends) {

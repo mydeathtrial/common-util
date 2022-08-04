@@ -8,5 +8,5 @@ package cloud.agileframework.common.util.clazz;
  * @since 1.0
  */
 public enum TypeEnum {
-    Class,TypeVariable,ParameterizedType,GenericArrayType,WildcardType
+    Class, TypeVariable, ParameterizedType, GenericArrayType, WildcardType
 }

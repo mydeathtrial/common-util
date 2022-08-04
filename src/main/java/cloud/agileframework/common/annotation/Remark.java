@@ -1,6 +1,10 @@
 package cloud.agileframework.common.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * @author 佟盟
@@ -27,6 +31,6 @@ public @interface Remark {
      * 是否作为excel表头
      */
     boolean excelHead() default true;
-    
+
     int sort() default 0;
 }

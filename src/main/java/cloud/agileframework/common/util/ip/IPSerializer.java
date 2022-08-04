@@ -34,7 +34,7 @@ public class IPSerializer implements ObjectSerializer, ObjectDeserializer {
     @Override
     public <T> T deserialze(DefaultJSONParser parser, Type type, Object fieldName) {
         String val = (String) parser.parse();
-        return ObjectUtil.to(IPv4Util.ipToLong(val),new TypeReference<>(type));
+        return ObjectUtil.to(IPv4Util.ipToLong(val), new TypeReference<>(type));
     }
 
     @Override

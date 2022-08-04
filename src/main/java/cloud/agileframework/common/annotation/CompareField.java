@@ -19,12 +19,14 @@ import java.lang.annotation.Target;
 public @interface CompareField {
     /**
      * 忽略父的remark属性
+     *
      * @return 默认false
      */
     boolean ignoreParentRemark() default false;
 
     /**
      * 忽略父的name属性
+     *
      * @return 默认false
      */
     boolean ignoreParentName() default false;

@@ -3,7 +3,6 @@ package cloud.agileframework.common.util.file;
 import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.file.poi.ExcelFile;
 import cloud.agileframework.common.util.string.StringUtil;
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 
 import javax.activation.MimetypesFileTypeMap;
@@ -25,7 +24,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +146,7 @@ public class FileUtil extends FileUtils {
 
     public static void downloadFile(String fileName, InputStream stream, HttpServletRequest request, HttpServletResponse response) throws IOException {
         setContentLength(stream, response);
-        setContentDisposition(fileName, request, response);
+        setContentDisposition(fileName, response);
         ServletOutputStream outputStream = response.getOutputStream();
         inWriteOut(stream, response.getOutputStream());
         outputStream.close();
@@ -162,18 +160,12 @@ public class FileUtil extends FileUtils {
         response.setHeader("Content-Length", String.valueOf(stream.available()));
     }
 
-    private static void setContentDisposition(String fileName, HttpServletRequest request, HttpServletResponse response) throws UnsupportedEncodingException {
-        String contentDisposition;
-        final String userAgent = "User-Agent";
-        final String firefox = "firefox";
-        final String postman = "postman";
-        String lowerUserAgent = request.getHeader(userAgent).toLowerCase();
-        if (lowerUserAgent.contains(firefox) || lowerUserAgent.contains(postman)) {
-            contentDisposition = String.format("attachment; filename=\"%s\"", "=?UTF-8?B?" + (new String(Base64.encodeBase64(fileName.getBytes(StandardCharsets.UTF_8)))) + "?=");
-        } else {
-            contentDisposition = String.format("attachment; filename=\"%s\"", URLEncoder.encode(fileName, "UTF-8"));
-        }
-        response.setHeader("Content-Disposition", contentDisposition);
+    private static void setContentDisposition(String fileName, HttpServletResponse response) throws UnsupportedEncodingException {
+        response.setHeader("Content-disposition",
+                "attachment;" +
+                        " filename=" + URLEncoder.encode(fileName, "UTF-8") + ";" +
+                        " filename*=UTF-8''" + URLEncoder.encode(fileName, "UTF-8") + ";");
+
     }
 
     public static void downloadFile(File file, HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -181,7 +173,7 @@ public class FileUtil extends FileUtils {
     }
 
     public static void downloadFile(ExcelFile excelFile, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        setContentDisposition(excelFile.getFileName(), request, response);
+        setContentDisposition(excelFile.getFileName(), response);
         response.setContentType("application.properties/vnd.ms-excel");
         ((excelFile).getWorkbook()).write(response.getOutputStream());
     }

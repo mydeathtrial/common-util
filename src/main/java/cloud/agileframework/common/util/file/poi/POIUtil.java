@@ -11,6 +11,7 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.ClientAnchor;
 import org.apache.poi.ss.usermodel.Comment;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Drawing;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
  */
 public class POIUtil {
     private static final String SORT_FIELD_NAME = "sort";
+    public static final DataFormatter DATA_FORMATTER = new DataFormatter();
 
     /**
      * 创建excel
@@ -320,11 +322,8 @@ public class POIUtil {
                 result = cell.getBooleanCellValue();
                 break;
             case FORMULA:
-                Cell inCell = evaluator.evaluateInCell(cell);
-                result = getValue(inCell, workbook);
-                break;
             case NUMERIC:
-                result = cell.getNumericCellValue();
+                result = DATA_FORMATTER.formatCellValue(cell, evaluator);
                 break;
             case BLANK:
             case _NONE:

@@ -26,11 +26,4 @@ public @interface Remark {
      * 是否忽略
      */
     boolean ignoreCompare() default true;
-
-    /**
-     * 是否作为excel表头
-     */
-    boolean excelHead() default true;
-
-    int sort() default 0;
 }

@@ -1,30 +1,39 @@
 package cloud.agileframework.common.util.file.poi;
 
+import java.util.function.UnaryOperator;
+
 /**
  * @author on 2018/10/17
  * @author 佟盟
  * 为POI生成excel工具提供的辅助类，该类主要负责存放表头信息
  */
-public final class CellInfo {
+public class CellInfo {
     /**
      * 排位
      */
     private int sort;
-
     /**
      * 列索引值
      */
     private String key;
-
     /**
      * 显示名
      */
-    private String showName;
+    private String name;
+
+    private Class<?> type;
+
+    private UnaryOperator<Object> deserialize;
+
+    private UnaryOperator<Object> serialize;
 
     private CellInfo(Builder builder) {
         this.sort = builder.sort;
         this.key = builder.key;
-        this.showName = builder.showName;
+        this.name = builder.name;
+        this.type = builder.type;
+        this.serialize = builder.serialize;
+        this.deserialize = builder.deserialize;
     }
 
     public static Builder builder() {
@@ -47,12 +56,36 @@ public final class CellInfo {
         this.key = key;
     }
 
-    public String getShowName() {
-        return showName;
+    public String getName() {
+        return name;
     }
 
-    public void setShowName(String showName) {
-        this.showName = showName;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Class<?> getType() {
+        return type;
+    }
+
+    public void setType(Class<?> type) {
+        this.type = type;
+    }
+
+    public UnaryOperator<Object> getDeserialize() {
+        return deserialize;
+    }
+
+    public void setDeserialize(UnaryOperator<Object> deserialize) {
+        this.deserialize = deserialize;
+    }
+
+    public UnaryOperator<Object> getSerialize() {
+        return serialize;
+    }
+
+    public void setSerialize(UnaryOperator<Object> serialize) {
+        this.serialize = serialize;
     }
 
     /**
@@ -61,7 +94,12 @@ public final class CellInfo {
     public static class Builder {
         private int sort;
         private String key;
-        private String showName;
+        private String name;
+        private Class<?> type = Object.class;
+
+        private UnaryOperator<Object> deserialize = a -> a;
+
+        private UnaryOperator<Object> serialize = a -> a;
 
         public Builder setSort(int sort) {
             this.sort = sort;
@@ -73,8 +111,23 @@ public final class CellInfo {
             return this;
         }
 
-        public Builder setShowName(String showName) {
-            this.showName = showName;
+        public Builder setName(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder setType(Class<?> type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder setDeserialize(UnaryOperator<Object> deserialize) {
+            this.deserialize = deserialize;
+            return this;
+        }
+
+        public Builder setSerialize(UnaryOperator<Object> serialize) {
+            this.serialize = serialize;
             return this;
         }
 

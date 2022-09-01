@@ -6,12 +6,14 @@ import cloud.agileframework.common.util.file.FileUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.ClientAnchor;
 import org.apache.poi.ss.usermodel.Comment;
 import org.apache.poi.ss.usermodel.Drawing;
 import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.RichTextString;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -140,12 +142,13 @@ public class POIUtil {
         for (CellInfo cell : headerColumns) {
             String currentCellData = null;
             if (rowData instanceof Map) {
-                currentCellData = ObjectUtil.to(((Map) rowData).get(cell.getKey()), new TypeReference<String>() {
+                Object value = ((Map) rowData).get(cell.getKey());
+                currentCellData = ObjectUtil.to(value, new TypeReference<String>() {
                 });
             } else if (rowData instanceof List) {
                 Object o = ((List) rowData).get(currentColumnIndex);
                 if (o instanceof CellInfo) {
-                    currentCellData = ((CellInfo) o).getShowName();
+                    currentCellData = ((CellInfo) o).getName();
                 } else if (o instanceof String) {
                     currentCellData = (String) o;
                 }
@@ -156,12 +159,12 @@ public class POIUtil {
                         field.setAccessible(true);
                         currentCellData = ObjectUtil.to(field.get(rowData), new TypeReference<String>() {
                         });
-                    } catch (IllegalAccessException | NoSuchFieldException e) {
-                        currentCellData = null;
+                    } catch (IllegalAccessException | NoSuchFieldException ignored) {
                     }
                 }
             }
-            row.createCell(currentColumnIndex++).setCellValue(currentCellData);
+            Object value = cell.getSerialize().apply(currentCellData);
+            row.createCell(currentColumnIndex++).setCellValue(value == null ? "" : value.toString());
         }
     }
 
@@ -201,43 +204,54 @@ public class POIUtil {
         List<T> list = Lists.newArrayList();
         Iterator<Sheet> sheets = excel.sheetIterator();
         while (sheets.hasNext()) {
-            list.addAll(readSheet(typeReference, columns, sheets.next()));
+            list.addAll(readSheet(typeReference, columns, sheets.next(), excel));
         }
         return list;
     }
 
-    public static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet) {
+    public static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet, Workbook workbook) {
         return readSheet(new TypeReference<Map<String, Object>>() {
-        }, columns, sheet);
+        }, columns, sheet, workbook);
     }
 
-    public static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet) {
-        return readSheet(new TypeReference<T>(clazz), columns, sheet);
+    public static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet, Workbook workbook) {
+        return readSheet(new TypeReference<T>(clazz), columns, sheet, workbook);
     }
 
     /**
-     * 按顺序提取每一列字段对应的code列表
+     * excel按准许翻译每一列的CellInfo信息
      *
      * @param columns 字段信息
      * @param sheet   sheet页
      * @return 字段信息列表
      */
-    public static List<String> readColumnInfo(List<CellInfo> columns, Sheet sheet) {
-        Map<String, String> columnMapping = columns.stream().collect(Collectors.toMap(CellInfo::getShowName, CellInfo::getKey));
+    public static List<CellInfo> readColumnInfo(List<CellInfo> columns, Sheet sheet) {
+        Map<String, CellInfo> columnMapping = columns.stream().collect(Collectors.toMap(a -> a.getName().trim(), a -> a));
         if (columnMapping.isEmpty()) {
             return Lists.newArrayList();
         }
         Iterator<Row> rows = sheet.rowIterator();
-        List<String> columnInfo = Lists.newLinkedList();
+        List<CellInfo> columnInfo = Lists.newLinkedList();
         if (!rows.hasNext()) {
             return Lists.newArrayList();
         }
         Row row = rows.next();
 
         Iterator<Cell> cells = row.cellIterator();
+        int cellIndex = 1;
         while (cells.hasNext()) {
             Cell cell = cells.next();
-            columnInfo.add(columnMapping.get(cell.getStringCellValue()));
+            String cellName = cell.getStringCellValue().trim();
+            if (StringUtils.isBlank(cellName)) {
+                cellName = cellIndex + "";
+            }
+            CellInfo cellInfo = columnMapping.get(cellName);
+            if (cellInfo == null) {
+                columnInfo.add(CellInfo.builder().setName(cellName).setKey(cellIndex + "").build());
+            } else {
+                columnInfo.add(cellInfo);
+            }
+            cellIndex++;
         }
         return columnInfo;
     }
@@ -248,9 +262,9 @@ public class POIUtil {
      * @param columns 映射字段
      * @param sheet   sheet页
      */
-    public static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet) {
+    public static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet, Workbook workbook) {
         List<T> list = Lists.newArrayList();
-        List<String> columnInfo = readColumnInfo(columns, sheet);
+        List<CellInfo> columnInfo = readColumnInfo(columns, sheet);
         if (columnInfo.isEmpty()) {
             return list;
         }
@@ -260,7 +274,7 @@ public class POIUtil {
         while (rows.hasNext()) {
             if (rowNum != 0) {
                 Row row = rows.next();
-                T result = readRow(typeReference, columnInfo, row);
+                T result = readRow(typeReference, columnInfo, row, workbook);
                 if (result == null) continue;
                 list.add(result);
             }
@@ -270,7 +284,7 @@ public class POIUtil {
         return list;
     }
 
-    public static <T> T readRow(TypeReference<T> typeReference, List<String> columnInfo, Row row) {
+    public static <T> T readRow(TypeReference<T> typeReference, List<CellInfo> columnInfo, Row row, Workbook workbook) {
         LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
         int cellNum = 0;
         Iterator<Cell> cells = row.cellIterator();
@@ -278,40 +292,45 @@ public class POIUtil {
             Cell cell = cells.next();
 
             int dataCellIndex = cell.getColumnIndex();
+            CellInfo cellInfo = columnInfo.get(cellNum++);
             for (int i = 0; i < dataCellIndex - cellNum; i++) {
-                rowData.put(columnInfo.get(cellNum++), null);
+                rowData.put(cellInfo.getKey(), null);
             }
-            rowData.put(columnInfo.get(cellNum++), getValue(cell));
+            Object value = getValue(cell, workbook);
+            Object v = ObjectUtil.to(cellInfo.getDeserialize().apply(value), new TypeReference<>(cellInfo.getType()));
+            rowData.put(cellInfo.getKey(), v);
         }
         return ObjectUtil.to(rowData, typeReference);
     }
 
-    public static Object getValue(Cell cell) {
-        try {
-            return cell.getStringCellValue();
-        } catch (Exception ignored) {
+    public static Object getValue(Cell cell, Workbook workbook) {
+        Object result = null;
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+        switch (cell.getCellType()) {
+            case STRING:
+                String value = cell.getStringCellValue();
+                if (!StringUtils.isBlank(value)) {
+                    result = value.trim();
+                }
+                break;
+            case ERROR:
+                result = cell.getErrorCellValue();
+                break;
+            case BOOLEAN:
+                result = cell.getBooleanCellValue();
+                break;
+            case FORMULA:
+                Cell inCell = evaluator.evaluateInCell(cell);
+                result = getValue(inCell, workbook);
+                break;
+            case NUMERIC:
+                result = cell.getNumericCellValue();
+                break;
+            case BLANK:
+            case _NONE:
+                break;
         }
-
-        try {
-            return cell.getBooleanCellValue();
-        } catch (Exception ignored) {
-        }
-
-        try {
-            return cell.getNumericCellValue();
-        } catch (Exception ignored) {
-        }
-
-        try {
-            return cell.getDateCellValue();
-        } catch (Exception ignored) {
-        }
-
-        try {
-            return cell.getErrorCellValue();
-        } catch (Exception ignored) {
-        }
-        return null;
+        return result;
     }
 
     public static Workbook readFile(Object file) {

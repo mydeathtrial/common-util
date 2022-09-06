@@ -22,7 +22,7 @@ public class CellInfo {
     private String name;
 
     private Class<?> type;
-
+    
     private UnaryOperator<Object> deserialize;
 
     private UnaryOperator<Object> serialize;
@@ -101,32 +101,32 @@ public class CellInfo {
 
         private UnaryOperator<Object> serialize = a -> a;
 
-        public Builder setSort(int sort) {
+        public Builder sort(int sort) {
             this.sort = sort;
             return this;
         }
 
-        public Builder setKey(String key) {
+        public Builder key(String key) {
             this.key = key;
             return this;
         }
 
-        public Builder setName(String name) {
+        public Builder name(String name) {
             this.name = name;
             return this;
         }
 
-        public Builder setType(Class<?> type) {
+        public Builder type(Class<?> type) {
             this.type = type;
             return this;
         }
 
-        public Builder setDeserialize(UnaryOperator<Object> deserialize) {
+        public Builder deserialize(UnaryOperator<Object> deserialize) {
             this.deserialize = deserialize;
             return this;
         }
 
-        public Builder setSerialize(UnaryOperator<Object> serialize) {
+        public Builder serialize(UnaryOperator<Object> serialize) {
             this.serialize = serialize;
             return this;
         }

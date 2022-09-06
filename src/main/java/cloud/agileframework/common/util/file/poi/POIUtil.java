@@ -27,6 +27,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -93,7 +94,10 @@ public class POIUtil {
             CollectionsUtil.sort(headerColumns, SORT_FIELD_NAME);
 
             //创建表头
-            createRow(sheet, headerColumns, currentRowIndex++, headerColumns);
+            Row row = sheet.createRow(currentRowIndex++);
+            for (int i = 0; i < headerColumns.size(); i++) {
+                row.createCell(i).setCellValue(headerColumns.get(i).getName());
+            }
 
             //逐行创建表数据
             if (data == null) {
@@ -142,31 +146,39 @@ public class POIUtil {
         Row row = sheet.createRow(rowIndex);
         int currentColumnIndex = 0;
         for (CellInfo cell : headerColumns) {
-            String currentCellData = null;
+            Object currentCellData = null;
             if (rowData instanceof Map) {
-                Object value = ((Map) rowData).get(cell.getKey());
-                currentCellData = ObjectUtil.to(value, new TypeReference<String>() {
-                });
+                currentCellData = ((Map) rowData).get(cell.getKey());
             } else if (rowData instanceof List) {
                 Object o = ((List) rowData).get(currentColumnIndex);
                 if (o instanceof CellInfo) {
                     currentCellData = ((CellInfo) o).getName();
                 } else if (o instanceof String) {
-                    currentCellData = (String) o;
+                    currentCellData = o;
                 }
             } else {
                 if (rowData != null) {
                     try {
                         Field field = rowData.getClass().getDeclaredField(cell.getKey());
                         field.setAccessible(true);
-                        currentCellData = ObjectUtil.to(field.get(rowData), new TypeReference<String>() {
-                        });
+                        currentCellData = field.get(rowData);
                     } catch (IllegalAccessException | NoSuchFieldException ignored) {
                     }
                 }
             }
             Object value = cell.getSerialize().apply(currentCellData);
-            row.createCell(currentColumnIndex++).setCellValue(value == null ? "" : value.toString());
+            if (value instanceof Date) {
+                row.createCell(currentColumnIndex++).setCellValue((Date) value);
+            } else if (value instanceof Double) {
+                row.createCell(currentColumnIndex++).setCellValue((Double) value);
+            } else if (value instanceof String) {
+                row.createCell(currentColumnIndex++).setCellValue((String) value);
+            } else if (value instanceof Boolean) {
+                row.createCell(currentColumnIndex++).setCellValue((Boolean) value);
+            } else {
+                row.createCell(currentColumnIndex++).setCellValue("");
+            }
+
         }
     }
 
@@ -249,7 +261,7 @@ public class POIUtil {
             }
             CellInfo cellInfo = columnMapping.get(cellName);
             if (cellInfo == null) {
-                columnInfo.add(CellInfo.builder().setName(cellName).setKey(cellIndex + "").build());
+                columnInfo.add(CellInfo.builder().name(cellName).key(cellIndex + "").build());
             } else {
                 columnInfo.add(cellInfo);
             }

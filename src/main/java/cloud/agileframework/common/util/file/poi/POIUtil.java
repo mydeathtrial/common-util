@@ -25,6 +25,10 @@ import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -189,7 +193,7 @@ public class POIUtil {
      * @param file excel文件
      * @return 格式化结果
      */
-    public static <T> List<T> readExcel(Class<T> clazz, File file) {
+    public static <T> List<T> readExcel(Class<T> clazz, File file) throws IOException {
         return readExcel(new TypeReference<T>(clazz), file, null);
     }
 
@@ -200,13 +204,13 @@ public class POIUtil {
      * @param columns map-key对应字段
      * @return 格式化结果
      */
-    public static List<Map<String, Object>> readExcel(File file, List<CellInfo> columns) {
+    public static List<Map<String, Object>> readExcel(File file, List<CellInfo> columns) throws IOException {
         return readExcel(new TypeReference<Map<String, Object>>() {
         }, file, columns);
     }
 
 
-    public static <T> List<T> readExcel(TypeReference<T> typeReference, File file, List<CellInfo> columns) {
+    public static <T> List<T> readExcel(TypeReference<T> typeReference, File file, List<CellInfo> columns) throws IOException {
         Workbook excel = readFile(file);
         return readExcel(typeReference, columns, excel);
 
@@ -340,29 +344,23 @@ public class POIUtil {
         return result;
     }
 
-    public static Workbook readFile(Object file) {
-        Workbook result = null;
-        if (file instanceof File) {
-            String[] s = ((File) file).getName().split("[.]");
-            String suffix;
-            if (s.length > 1) {
-                suffix = s[s.length - 1];
-            } else {
-                suffix = Objects.requireNonNull(FileUtil.getFormat((File) file)).toLowerCase();
-            }
-            try {
-                final String xls = "xls";
-                Path path = ((File) file).toPath();
-                if (xls.equals(suffix)) {
-                    result = new HSSFWorkbook(Files.newInputStream(path));
-                } else {
-                    result = new XSSFWorkbook(Files.newInputStream(path));
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+    public static Workbook readFile(File file) throws IOException {
+        return readFile(file.getName(),new FileInputStream(file));
+    }
 
+    public static Workbook readFile(String fileName, InputStream inputStream) throws IOException {
+        Workbook result;
+        String[] s = fileName.split("[.]");
+        String suffix = null;
+        if (s.length > 1) {
+            suffix = s[s.length - 1];
+        }
+        final String xls = "xls";
+        if (xls.equals(suffix)) {
+            result = new HSSFWorkbook(inputStream);
+        } else {
+            result = new XSSFWorkbook(inputStream);
+        }
         return result;
     }
 

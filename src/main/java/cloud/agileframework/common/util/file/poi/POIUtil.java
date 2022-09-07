@@ -6,6 +6,7 @@ import cloud.agileframework.common.util.file.FileUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
@@ -300,17 +301,12 @@ public class POIUtil {
 
     public static <T> T readRow(TypeReference<T> typeReference, List<CellInfo> columnInfo, Row row, Workbook workbook) {
         LinkedHashMap<String, Object> rowData = new LinkedHashMap<>();
-        int cellNum = 0;
         Iterator<Cell> cells = row.cellIterator();
         while (cells.hasNext()) {
             Cell cell = cells.next();
-
             int dataCellIndex = cell.getColumnIndex();
-            CellInfo cellInfo = columnInfo.get(cellNum++);
-            for (int i = 0; i < dataCellIndex - cellNum; i++) {
-                rowData.put(cellInfo.getKey(), null);
-            }
             Object value = getValue(cell, workbook);
+            CellInfo cellInfo = columnInfo.get(dataCellIndex);
             Object v = ObjectUtil.to(cellInfo.getDeserialize().apply(value), new TypeReference<>(cellInfo.getType()));
             rowData.put(cellInfo.getKey(), v);
         }

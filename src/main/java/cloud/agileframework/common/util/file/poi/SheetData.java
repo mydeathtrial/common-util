@@ -1,5 +1,7 @@
 package cloud.agileframework.common.util.file.poi;
 
+import com.google.common.collect.Lists;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +66,7 @@ public class SheetData {
 
     public SheetData addCell(CellInfo cell) {
         if (cells == null) {
-            cells = new ArrayList<>();
+            cells = Lists.newCopyOnWriteArrayList();
         }
         this.cells.add(cell);
         return this;

@@ -2,11 +2,9 @@ package cloud.agileframework.common.util.file.poi;
 
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.collection.CollectionsUtil;
-import cloud.agileframework.common.util.file.FileUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.google.common.collect.Lists;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.IterableUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
@@ -26,18 +24,16 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -216,7 +212,7 @@ public class POIUtil {
 
     }
 
-    public static <T> List<T> readExcel(TypeReference<T> typeReference, List<CellInfo> columns, Workbook excel) {
+    public static <T> List<T> readExcel(TypeReference<T> typeReference, List<CellInfo> columns, Workbook excel) throws ExcelFormatException {
         if (excel == null) {
             return Lists.newArrayList();
         }
@@ -228,51 +224,54 @@ public class POIUtil {
         return list;
     }
 
-    public static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet, Workbook workbook) {
+    public static List<Map<String, Object>> readSheet(List<CellInfo> columns, Sheet sheet, Workbook workbook) throws ExcelFormatException {
         return readSheet(new TypeReference<Map<String, Object>>() {
         }, columns, sheet, workbook);
     }
 
-    public static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet, Workbook workbook) {
+    public static <T> List<T> readSheet(Class<T> clazz, List<CellInfo> columns, Sheet sheet, Workbook workbook) throws ExcelFormatException {
         return readSheet(new TypeReference<T>(clazz), columns, sheet, workbook);
     }
 
     /**
-     * excel按准许翻译每一列的CellInfo信息
+     * 将columns与excel文件的表头按顺序对应
      *
      * @param columns 字段信息
      * @param sheet   sheet页
-     * @return 字段信息列表
      */
-    public static List<CellInfo> readColumnInfo(List<CellInfo> columns, Sheet sheet) {
+    public static void readColumnInfo(List<CellInfo> columns, Sheet sheet) throws ExcelFormatException {
         Map<String, CellInfo> columnMapping = columns.stream().collect(Collectors.toMap(a -> a.getName().trim(), a -> a));
         if (columnMapping.isEmpty()) {
-            return Lists.newArrayList();
+            return;
         }
         Iterator<Row> rows = sheet.rowIterator();
-        List<CellInfo> columnInfo = Lists.newLinkedList();
         if (!rows.hasNext()) {
-            return Lists.newArrayList();
+            return;
         }
         Row row = rows.next();
 
         Iterator<Cell> cells = row.cellIterator();
-        int cellIndex = 1;
+        int cellIndex = 0;
         while (cells.hasNext()) {
             Cell cell = cells.next();
             String cellName = cell.getStringCellValue().trim();
             if (StringUtils.isBlank(cellName)) {
-                cellName = cellIndex + "";
+                cellIndex++;
+                continue;
             }
             CellInfo cellInfo = columnMapping.get(cellName);
-            if (cellInfo == null) {
-                columnInfo.add(CellInfo.builder().name(cellName).key(cellIndex + "").build());
-            } else {
-                columnInfo.add(cellInfo);
+            if (cellInfo != null) {
+                cellInfo.setSort(cellIndex);
             }
             cellIndex++;
         }
-        return columnInfo;
+        List<CellInfo> unknownColumns = columns.stream().filter(a -> a.getSort() == -1).collect(Collectors.toList());
+        for (CellInfo cellInfo : unknownColumns) {
+            if (cellInfo.isRequire()) {
+                throw new ExcelFormatException();
+            }
+        }
+        Collections.sort(columns);
     }
 
     /**
@@ -281,10 +280,10 @@ public class POIUtil {
      * @param columns 映射字段
      * @param sheet   sheet页
      */
-    public static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet, Workbook workbook) {
+    public static <T> List<T> readSheet(TypeReference<T> typeReference, List<CellInfo> columns, Sheet sheet, Workbook workbook) throws ExcelFormatException {
         List<T> list = Lists.newArrayList();
-        List<CellInfo> columnInfo = readColumnInfo(columns, sheet);
-        if (columnInfo.isEmpty()) {
+        readColumnInfo(columns, sheet);
+        if (columns.stream().allMatch(cellInfo -> cellInfo.getSort() == -1)) {
             return list;
         }
 
@@ -293,7 +292,7 @@ public class POIUtil {
         while (rows.hasNext()) {
             if (rowNum != 0) {
                 Row row = rows.next();
-                T result = readRow(typeReference, columnInfo, row, workbook);
+                T result = readRow(typeReference, columns, row, workbook);
                 if (result == null) continue;
                 list.add(result);
             }
@@ -310,7 +309,10 @@ public class POIUtil {
             Cell cell = cells.next();
             int dataCellIndex = cell.getColumnIndex();
             Object value = getValue(cell, workbook);
-            CellInfo cellInfo = columnInfo.get(dataCellIndex);
+            CellInfo cellInfo = columnInfo.stream().filter(a -> dataCellIndex == a.getSort()).findFirst().orElse(null);
+            if (cellInfo == null) {
+                continue;
+            }
             Object v = ObjectUtil.to(cellInfo.getDeserialize().apply(value), new TypeReference<>(cellInfo.getType()));
             rowData.put(cellInfo.getKey(), v);
         }
@@ -345,7 +347,7 @@ public class POIUtil {
     }
 
     public static Workbook readFile(File file) throws IOException {
-        return readFile(file.getName(),new FileInputStream(file));
+        return readFile(file.getName(), Files.newInputStream(file.toPath()));
     }
 
     public static Workbook readFile(String fileName, InputStream inputStream) throws IOException {

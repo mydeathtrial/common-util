@@ -7,7 +7,7 @@ import java.util.function.UnaryOperator;
  * @author 佟盟
  * 为POI生成excel工具提供的辅助类，该类主要负责存放表头信息
  */
-public class CellInfo {
+public class CellInfo implements Comparable<CellInfo> {
     /**
      * 排位
      */
@@ -23,6 +23,8 @@ public class CellInfo {
 
     private Class<?> type;
     
+    private boolean require;
+    
     private UnaryOperator<Object> deserialize;
 
     private UnaryOperator<Object> serialize;
@@ -32,6 +34,7 @@ public class CellInfo {
         this.key = builder.key;
         this.name = builder.name;
         this.type = builder.type;
+        this.require = builder.require;
         this.serialize = builder.serialize;
         this.deserialize = builder.deserialize;
     }
@@ -72,6 +75,14 @@ public class CellInfo {
         this.type = type;
     }
 
+    public boolean isRequire() {
+        return require;
+    }
+
+    public void setRequire(boolean require) {
+        this.require = require;
+    }
+
     public UnaryOperator<Object> getDeserialize() {
         return deserialize;
     }
@@ -88,14 +99,21 @@ public class CellInfo {
         this.serialize = serialize;
     }
 
+    @Override
+    public int compareTo(CellInfo o) {
+        return getSort() - o.getSort();
+    }
+
     /**
      * 建造者
      */
     public static class Builder {
-        private int sort;
+        private int sort = -1;
         private String key;
         private String name;
         private Class<?> type = Object.class;
+        
+        private boolean require = true;
 
         private UnaryOperator<Object> deserialize = a -> a;
 
@@ -118,6 +136,11 @@ public class CellInfo {
 
         public Builder type(Class<?> type) {
             this.type = type;
+            return this;
+        }
+
+        public Builder require(boolean require) {
+            this.require = require;
             return this;
         }
 

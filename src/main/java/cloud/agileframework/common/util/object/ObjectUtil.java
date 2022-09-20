@@ -39,6 +39,7 @@ import java.lang.reflect.Type;
 import java.sql.Timestamp;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -51,13 +52,13 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.StringJoiner;
 import java.util.TreeSet;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author 佟盟
@@ -331,7 +332,7 @@ public class ObjectUtil extends ObjectUtils {
                 ParameterizedType parameterizedType = (ParameterizedType) type;
                 nodeType = parameterizedType.getActualTypeArguments()[0];
             }
-
+            Type finalNodeType = nodeType;
             if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)) {
                 for (Object o : (Collection<?>) from) {
                     collection.add(to(o, new TypeReference<>(nodeType)));
@@ -472,7 +473,7 @@ public class ObjectUtil extends ObjectUtils {
         Class<?> clazz = object.getClass();
         try {
             Object newObject = clazz.newInstance();
-            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).parallelStream().filter(field -> {
+            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
                 try {
                     if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
@@ -533,7 +534,7 @@ public class ObjectUtil extends ObjectUtils {
 
                 Set<Method> allMethod = ClassUtil.getAllMethod(objectClass);
 
-                List<Method> list = allMethod.parallelStream()
+                List<Method> list = allMethod.stream()
                         .filter(method -> setMethodName.equals(method.getName()) && method.getParameterCount() == 1)
                         .sorted((a, b) -> {
                             int result = b.getName().compareTo(a.getName());
@@ -802,12 +803,13 @@ public class ObjectUtil extends ObjectUtils {
 
 
         if (sourceClass == targetClass) {
-            ClassUtil.getAllField(sourceClass)
-                    .parallelStream()
-                    .filter(field -> field.getName().startsWith(finalPrefix) && field.getName().endsWith(finalPrefix))
-                    .forEach(field -> result.put(field, Sets.newHashSet(field)));
+            for (Field field : ClassUtil.getAllField(sourceClass)) {
+                if (field.getName().startsWith(finalPrefix) && field.getName().endsWith(finalPrefix)) {
+                    result.put(field, Sets.newHashSet(field));
+                }
+            }
         } else {
-            ClassUtil.getAllField(targetClass).parallelStream().forEach(toField -> {
+            for (Field toField : ClassUtil.getAllField(targetClass)) {
                 String name = toField.getName();
 
                 Field fromField = ClassUtil.getField(sourceClass, name);
@@ -819,7 +821,7 @@ public class ObjectUtil extends ObjectUtils {
                     set.add(toField);
                     result.put(fromField, set);
                 }
-            });
+            }
         }
         return result;
     }
@@ -860,14 +862,18 @@ public class ObjectUtil extends ObjectUtils {
 //            map.put(e.getKey(), set);
 //        });
 
-        targetMap.entrySet().parallelStream().filter(e -> {
+        targetMap.entrySet().stream().filter(e -> {
             final String name = e.getKey().getName();
             return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
         }).forEach(e -> {
             Set<String> targetAlias = e.getValue();
-            Set<Field> set = sourceMap.entrySet().parallelStream().filter(te ->
-                    !CollectionUtils.retainAll(te.getValue(), targetAlias).isEmpty()
-            ).map(Map.Entry::getKey).collect(Collectors.toSet());
+            Set<Field> set = new HashSet<>();
+            for (Map.Entry<Field, Set<String>> te : sourceMap.entrySet()) {
+                if (!CollectionUtils.retainAll(te.getValue(), targetAlias).isEmpty()) {
+                    Field key = te.getKey();
+                    set.add(key);
+                }
+            }
             map.put(e.getKey(), set);
         });
 
@@ -884,8 +890,14 @@ public class ObjectUtil extends ObjectUtils {
         Map<Field, Set<String>> sourceMap = Maps.newConcurrentMap();
         Set<ClassUtil.Target<Alias>> sourceAnnotations = ClassUtil.getAllEntityAnnotation(sourceClass, Alias.class);
 
-        ClassUtil.getAllField(sourceClass).forEach(field -> {
-            ClassUtil.Target<Alias> an = sourceAnnotations.parallelStream().filter(sourceAnnotation -> sourceAnnotation.getMember() == field).findFirst().orElse(null);
+        for (Field field : ClassUtil.getAllField(sourceClass)) {
+            ClassUtil.Target<Alias> an = null;
+            for (ClassUtil.Target<Alias> sourceAnnotation : sourceAnnotations) {
+                if (sourceAnnotation.getMember() == field) {
+                    an = sourceAnnotation;
+                    break;
+                }
+            }
             Set<String> aliases;
             if (an != null) {
                 aliases = Sets.newHashSet(an.getAnnotation().value());
@@ -895,7 +907,7 @@ public class ObjectUtil extends ObjectUtils {
             }
 
             sourceMap.put(field, aliases);
-        });
+        }
         return sourceMap;
     }
 
@@ -1056,14 +1068,14 @@ public class ObjectUtil extends ObjectUtils {
             String getMethodName = "get" + fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
             if (field.getType() == Boolean.TYPE) {
                 String getMethodName2 = "is" + StringUtil.toUpperName(field.getName());
-                methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
                                 (method.getName().equals(getMethodName) || method.getName().equals(getMethodName2)) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
                             return method;
                         }).collect(Collectors.toList());
             } else {
-                methods = ClassInfo.getCache(o.getClass()).getAllMethod().parallelStream().filter(method ->
+                methods = ClassInfo.getCache(o.getClass()).getAllMethod().stream().filter(method ->
                                 method.getName().equals(getMethodName) && method.getParameterCount() == 0)
                         .map(method -> {
                             fieldInfo.putGetter(method);
@@ -1145,7 +1157,7 @@ public class ObjectUtil extends ObjectUtils {
             T object = ClassUtil.newInstance(clazz);
 
             Set<Field> fields = ClassUtil.getAllField(clazz);
-            fields.parallelStream().forEach(field -> {
+            fields.forEach(field -> {
                 String key = coverFieldNameToMapKey(clazz, field, prefix, suffix, map);
                 if (key != null) {
                     try {
@@ -1201,7 +1213,11 @@ public class ObjectUtil extends ObjectUtils {
             return key;
         }
 
-        Set<String> keys = map.keySet().stream().map(Object::toString).collect(Collectors.toSet());
+        Set<String> keys = new HashSet<>();
+        for (Object o : map.keySet()) {
+            String toString = o.toString();
+            keys.add(toString);
+        }
         key = StringUtil.vagueMatches(propertyName, keys);
         if (key != null) {
             return key;
@@ -1272,7 +1288,7 @@ public class ObjectUtil extends ObjectUtils {
         Class<?> clazz = object.getClass();
         try {
             Object newObject = clazz.newInstance();
-            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).parallelStream().filter(field -> {
+            Set<Field> haveValueFields = ClassUtil.getAllField(clazz).stream().filter(field -> {
                 try {
                     if (SERIAL_VERSION_UID.equals(field.getName())) {
                         return false;
@@ -1304,10 +1320,10 @@ public class ObjectUtil extends ObjectUtils {
         if (object == null) {
             return;
         }
-        ClassUtil.getAllField(object.getClass()).parallelStream().forEach(field -> {
+        for (Field field : ClassUtil.getAllField(object.getClass())) {
             try {
                 if (SERIAL_VERSION_UID.equals(field.getName())) {
-                    return;
+                    continue;
                 }
                 if (!field.isAccessible()) {
                     field.setAccessible(true);
@@ -1315,7 +1331,7 @@ public class ObjectUtil extends ObjectUtils {
                 field.set(object, null);
             } catch (Exception ignored) {
             }
-        });
+        }
     }
 
     /**
@@ -1364,7 +1380,13 @@ public class ObjectUtil extends ObjectUtils {
      */
     public static Map<String, Object> getUnderlineMapFromObject(Object o, String... excludeField) {
         Set<Field> fields = ClassUtil.getAllField(o.getClass());
-        fields = fields.stream().filter(field -> !ArrayUtils.contains(excludeField, field.getName())).collect(Collectors.toSet());
+        Set<Field> set = new HashSet<>();
+        for (Field field1 : fields) {
+            if (!ArrayUtils.contains(excludeField, field1.getName())) {
+                set.add(field1);
+            }
+        }
+        fields = set;
         Map<String, Object> result = new HashMap<>(fields.size());
         if (!fields.isEmpty()) {
             fields.forEach(field -> {
@@ -1430,10 +1452,15 @@ public class ObjectUtil extends ObjectUtils {
         Set<Field> targetFields = target == null ? Sets.newHashSetWithExpectedSize(0) : ClassUtil.getAllField(target.getClass());
 
         // 提取要处理比较的所有属性
-        Set<String> willResolveFieldNames = Stream.of(sourceFields, targetFields)
-                .flatMap(Collection::stream).map(Field::getName)
-                .filter(a -> !ArrayUtils.contains(excludeProperty, a))
-                .collect(Collectors.toSet());
+        Set<String> willResolveFieldNames = new HashSet<>();
+        for (Set<Field> fields : Arrays.asList(sourceFields, targetFields)) {
+            for (Field field : fields) {
+                String a = field.getName();
+                if (!ArrayUtils.contains(excludeProperty, a)) {
+                    willResolveFieldNames.add(a);
+                }
+            }
+        }
 
         // 属性逐个比较
         for (String fieldName : willResolveFieldNames) {
@@ -1462,7 +1489,12 @@ public class ObjectUtil extends ObjectUtils {
      */
     public static String getDifferencePropertiesDesc(Object source, Object target, String... excludeProperty) {
         List<DifferentField> difFields = getDifferenceProperties(source, target, excludeProperty);
-        return difFields.stream().map(DifferentField::describe).collect(Collectors.joining(Constant.RegularAbout.NEW_LINE));
+        StringJoiner joiner = new StringJoiner(Constant.RegularAbout.NEW_LINE);
+        for (DifferentField difField : difFields) {
+            String describe = difField.describe();
+            joiner.add(describe);
+        }
+        return joiner.toString();
     }
 
     /**

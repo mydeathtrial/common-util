@@ -53,12 +53,15 @@ public class StringUtil extends StringUtils {
         // 根据source构建模糊匹配正则
         String fuzzyMatching = camelToMatchesRegex(source);
 
-        return targets.parallelStream()
-                .filter(target -> target.equalsIgnoreCase(source) ||
-                        PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE) ||
-                        target.equalsIgnoreCase(camelSource) ||
-                        target.equalsIgnoreCase(underlineSource))
-                .findFirst().orElse(null);
+        for (String target : targets) {
+            if (target.equals(source) ||
+                    target.equals(camelSource) ||
+                    target.equals(underlineSource) ||
+                    PatternUtil.matches(fuzzyMatching, target, Pattern.CASE_INSENSITIVE)) {
+                return target;
+            }
+        }
+        return null;
     }
 
     /**

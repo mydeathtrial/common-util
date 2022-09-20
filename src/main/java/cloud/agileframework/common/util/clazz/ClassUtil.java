@@ -283,19 +283,23 @@ public class ClassUtil extends ClassUtils {
     }
 
     public static Constructor<Type> getConstruct(TypeVariable<?> typeVariable, Class<?>[] parameterTypes) {
-        return Arrays.stream(typeVariable.getBounds())
-                .map(a -> getConstruct(a, parameterTypes))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        for (Type a : typeVariable.getBounds()) {
+            Constructor<Type> construct = getConstruct(a, parameterTypes);
+            if (construct != null) {
+                return construct;
+            }
+        }
+        return null;
     }
 
     public static Constructor<Type> getConstruct(WildcardType wildcardType, Class<?>[] parameterTypes) {
-        return Arrays.stream(wildcardType.getLowerBounds())
-                .map(a -> getConstruct(a, parameterTypes))
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        for (Type a : wildcardType.getLowerBounds()) {
+            Constructor<Type> construct = getConstruct(a, parameterTypes);
+            if (construct != null) {
+                return construct;
+            }
+        }
+        return null;
     }
 
     public static <F> Constructor<F> getConstruct(Class<F> clazz, Class<?>[] parameterTypes) {
@@ -323,21 +327,25 @@ public class ClassUtil extends ClassUtils {
     }
 
     public static Class<?> isWrapOrPrimitive(TypeVariable<?> type) {
-        return Arrays.stream((type)
-                        .getBounds())
-                .map(ClassUtil::isWrapOrPrimitive)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        for (Type type1 : (type)
+                .getBounds()) {
+            Class<?> wrapOrPrimitive = isWrapOrPrimitive(type1);
+            if (wrapOrPrimitive != null) {
+                return wrapOrPrimitive;
+            }
+        }
+        return null;
     }
 
     public static Class<?> isWrapOrPrimitive(WildcardType type) {
-        return Arrays.stream((type)
-                        .getUpperBounds())
-                .map(ClassUtil::isWrapOrPrimitive)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
+        for (Type type1 : (type)
+                .getUpperBounds()) {
+            Class<?> wrapOrPrimitive = isWrapOrPrimitive(type1);
+            if (wrapOrPrimitive != null) {
+                return wrapOrPrimitive;
+            }
+        }
+        return null;
     }
 
     public static boolean isAssignableFrom(Type type, Class<?> clazz, boolean positive) {
@@ -482,10 +490,18 @@ public class ClassUtil extends ClassUtils {
     }
 
     public static Class<?> getWrapper(TypeVariable<?> type) {
-        return Arrays.stream(type.getBounds())
-                .map(ClassUtil::getWrapper)
-                .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
-                .orElse(null);
+        boolean seen = false;
+        Class<?> best = null;
+        for (Type type1 : type.getBounds()) {
+            Class<?> wrapper = getWrapper(type1);
+            if (wrapper != null) {
+                if (!seen || (wrapper.isInterface() ? -1 : 1) < 0) {
+                    seen = true;
+                    best = wrapper;
+                }
+            }
+        }
+        return seen ? best : null;
     }
 
     public static Class<?> getWrapper(GenericArrayType type) {
@@ -497,15 +513,31 @@ public class ClassUtil extends ClassUtils {
     }
 
     public static Class<?> getWrapper(WildcardType type) {
-        Class<?> result = Arrays.stream(type.getUpperBounds())
-                .map(ClassUtil::getWrapper)
-                .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
-                .orElse(null);
+        boolean seen = false;
+        Class<?> best = null;
+        for (Type type1 : type.getUpperBounds()) {
+            Class<?> wrapper = getWrapper(type1);
+            if (wrapper != null) {
+                if (!seen || (wrapper.isInterface() ? -1 : 1) < 0) {
+                    seen = true;
+                    best = wrapper;
+                }
+            }
+        }
+        Class<?> result = seen ? best : null;
         if (result == null) {
-            result = Arrays.stream(type.getLowerBounds())
-                    .map(ClassUtil::getWrapper)
-                    .filter(Objects::nonNull).min((a, b) -> a.isInterface() ? -1 : 1)
-                    .orElse(null);
+            boolean seen1 = false;
+            Class<?> best1 = null;
+            for (Type type1 : type.getLowerBounds()) {
+                Class<?> wrapper = getWrapper(type1);
+                if (wrapper != null) {
+                    if (!seen1 || (wrapper.isInterface() ? -1 : 1) < 0) {
+                        seen1 = true;
+                        best1 = wrapper;
+                    }
+                }
+            }
+            result = seen1 ? best1 : null;
         }
         return result;
     }

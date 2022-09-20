@@ -60,6 +60,11 @@ public class ObjectUtilTest {
         if (ObjectUtil.isAllNullValidity(b)) {
             throw new RuntimeException();
         }
+
+        while (true){
+            ObjectUtil.to(data, new TypeReference<DemoA>() {
+            });
+        }
     }
 
     /**

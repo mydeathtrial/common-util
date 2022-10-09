@@ -26,6 +26,7 @@ import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 
 import java.lang.annotation.Annotation;
@@ -906,6 +907,11 @@ public class ObjectUtil extends ObjectUtils {
                 aliases = Sets.newHashSet(field.getName());
             }
 
+            JSONField jsonField = ClassUtil.getFieldAnnotation(sourceClass, field.getName(), JSONField.class);
+            if (jsonField != null && !StringUtils.isBlank(jsonField.name())) {
+                aliases.add(jsonField.name());
+            }
+
             sourceMap.put(field, aliases);
         }
         return sourceMap;
@@ -1243,7 +1249,7 @@ public class ObjectUtil extends ObjectUtils {
      * @param annotation 要取的注解
      * @return 注解结果集
      */
-    public static <T extends Annotation> T getAllEntityPropertyAnnotation(Class<?> clazz, Field field, Class<T> annotation) throws NoSuchMethodException {
+    public static <T extends Annotation> T getAllEntityPropertyAnnotation(Class<?> clazz, Field field, Class<T> annotation) {
         T result = null;
         T fieldDeclaredAnnotations = field.getDeclaredAnnotation(annotation);
         if (fieldDeclaredAnnotations != null) {

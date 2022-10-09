@@ -2,10 +2,8 @@ package cloud.agileframework.common.util.collection;
 
 import com.google.common.collect.Lists;
 import junit.framework.TestCase;
-import org.apache.commons.lang3.SerializationUtils;
 
 import java.util.ArrayList;
-import java.util.SortedSet;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -39,17 +37,6 @@ public class TreeUtilTest extends TestCase {
             root = (char) (root + 1);
         }
 
-    }
-
-    public void testCreateTree() {
-
-        long start = System.currentTimeMillis();
-        int i = 10;
-        while (i > 0) {
-            SortedSet<TreeNode> a = TreeUtil.createTree(SerializationUtils.clone(list), null, "/", "full");
-            i--;
-        }
-        System.out.println("old" + (System.currentTimeMillis() - start));
     }
 
     public void testCpu() {

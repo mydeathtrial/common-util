@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
  * @since 1.0
  */
 @SuperBuilder(toBuilder = true)
-public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implements Comparable<TreeBase<I, A>>, Serializable {
+public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implements Comparable<A>, Serializable {
     private I id;
     private I parentId;
     private Integer sort;
@@ -68,7 +68,7 @@ public class TreeBase<I extends Serializable, A extends TreeBase<I, A>> implemen
      * @return 比较结果
      */
     @Override
-    public int compareTo(TreeBase<I, A> o) {
+    public int compareTo(A o) {
         if (Objects.equals(this, o)) {
             return 0;
         }

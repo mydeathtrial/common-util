@@ -852,12 +852,12 @@ public class ObjectUtil extends ObjectUtils {
         Map<Field, Set<String>> sourceMap = parseFieldAlias(sourceClass);
         Map<Field, Set<String>> targetMap = parseFieldAlias(targetClass);
 
-//        sourceMap.entrySet().parallelStream().filter(e -> {
+//        sourceMap.entrySet().stream().filter(e -> {
 //            final String name = e.getKey().getName();
 //            return name.startsWith(finalPrefix) && name.endsWith(finalSuffix);
 //        }).forEach(e -> {
 //            Set<String> sourceAlias = e.getValue();
-//            Set<Field> set = targetMap.entrySet().parallelStream().filter(te ->
+//            Set<Field> set = targetMap.entrySet().stream().filter(te ->
 //                    !CollectionUtils.retainAll(te.getValue(), sourceAlias).isEmpty()
 //            ).map(Map.Entry::getKey).collect(Collectors.toSet());
 //            map.put(e.getKey(), set);

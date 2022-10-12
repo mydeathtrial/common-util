@@ -38,12 +38,12 @@ public class TreeUtil {
      * @return 树形结构数据集
      */
     public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<? extends T> nodes, A rootValue, String splitChar, Set<Field> fullFieldSet) {
-        Map<Optional<A>, List<T>> children = nodes.parallelStream().filter(node -> {
+        Map<Optional<A>, List<T>> children = nodes.stream().filter(node -> {
             node.getChildren().clear();
             return !Objects.equals(node.getParentId(), rootValue);
         }).collect(Collectors.groupingBy(n -> Optional.ofNullable(n.getParentId())));
 
-        nodes.parallelStream().forEach(node -> {
+        nodes.forEach(node -> {
             final List<T> child = children.get(Optional.ofNullable(node.getId()));
             if (child == null) {
                 return;
@@ -55,8 +55,8 @@ public class TreeUtil {
         if (fullFieldSet != null && !fullFieldSet.isEmpty()) {
             List<ParentWrapper<A, T>> wrapperList = nodes.stream().map(ParentWrapper::new).collect(Collectors.toList());
             Map<A, ParentWrapper<A, T>> map = Maps.newConcurrentMap();
-            wrapperList.parallelStream().forEach(a -> map.put(a.getCurrent().getId(), a));
-            wrapperList.parallelStream().forEach(a -> {
+            wrapperList.forEach(a -> map.put(a.getCurrent().getId(), a));
+            wrapperList.forEach(a -> {
                 Object parentId = a.getCurrent().getParentId();
                 if (parentId == null) {
                     return;
@@ -70,18 +70,18 @@ public class TreeUtil {
 
             Map<Object, T> cache = Maps.newConcurrentMap();
             fullFieldSet.forEach(b -> {
-                wrapperList.parallelStream().forEach(a -> {
+                wrapperList.forEach(a -> {
                     Object v = a.getFull(b, splitChar);
                     if (v == null) {
                         return;
                     }
                     cache.put(v, (T) a.getCurrent());
                 });
-                cache.entrySet().parallelStream().forEach(e -> ObjectUtil.setValue(e.getValue(), b, e.getKey()));
+                cache.entrySet().forEach(e -> ObjectUtil.setValue(e.getValue(), b, e.getKey()));
                 cache.clear();
             });
         }
-        return nodes.parallelStream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(ConcurrentSkipListSet::new));
+        return nodes.stream().filter(node -> Objects.equals(node.getParentId(), rootValue)).collect(Collectors.toCollection(ConcurrentSkipListSet::new));
     }
 
     public static <A extends Serializable, T extends TreeBase<A, T>> SortedSet<T> createTree(Collection<? extends T> list, A rootValue, String splitChar, String... fullFields) {

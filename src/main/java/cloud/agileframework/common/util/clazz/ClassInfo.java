@@ -6,6 +6,7 @@ import cloud.agileframework.common.util.string.StringUtil;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Lists;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import sun.reflect.generics.repository.FieldRepository;
 import sun.reflect.generics.repository.MethodRepository;
@@ -19,13 +20,14 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
  * @author 佟盟
@@ -110,8 +112,20 @@ public class ClassInfo<T> {
     private static void extractMethodRecursion(Class<?> clazz, Set<Method> set) {
         Method[] selfMethods = clazz.getDeclaredMethods();
         Method[] extendMethods = clazz.getMethods();
-        set.addAll(Arrays.stream(selfMethods).filter(c -> c.getDeclaringClass() != Object.class).collect(Collectors.toSet()));
-        set.addAll(Arrays.stream(extendMethods).filter(c -> c.getDeclaringClass() != Object.class).collect(Collectors.toSet()));
+        Set<Method> set1 = new HashSet<>();
+        for (Method selfMethod : selfMethods) {
+            if (selfMethod.getDeclaringClass() != Object.class) {
+                set1.add(selfMethod);
+            }
+        }
+        set.addAll(set1);
+        Set<Method> result = new HashSet<>();
+        for (Method c : extendMethods) {
+            if (c.getDeclaringClass() != Object.class) {
+                result.add(c);
+            }
+        }
+        set.addAll(result);
 
         Class<?> superClass = clazz.getSuperclass();
         if (superClass == Object.class || superClass == null) {
@@ -189,7 +203,12 @@ public class ClassInfo<T> {
             fieldAnnotations.put(annotationClass, set);
         }
 
-        return set.stream().map(r -> (ClassUtil.Target<A>) r).collect(Collectors.toSet());
+        Set<ClassUtil.Target<A>> result = new HashSet<>();
+        for (ClassUtil.Target<?> r : set) {
+            ClassUtil.Target<A> aTarget = (ClassUtil.Target<A>) r;
+            result.add(aTarget);
+        }
+        return result;
     }
 
     public <A extends Annotation> Set<ClassUtil.Target<A>> getAllMethodAnnotation(Class<A> annotationClass) {
@@ -212,7 +231,12 @@ public class ClassInfo<T> {
             }
             methodAnnotations.put(annotationClass, set);
         }
-        return set.stream().map(r -> (ClassUtil.Target<A>) r).collect(Collectors.toSet());
+        Set<ClassUtil.Target<A>> result = new HashSet<>();
+        for (ClassUtil.Target<?> r : set) {
+            ClassUtil.Target<A> aTarget = (ClassUtil.Target<A>) r;
+            result.add(aTarget);
+        }
+        return result;
     }
 
     public Constructor<T> getPrivateConstructor() {
@@ -230,7 +254,12 @@ public class ClassInfo<T> {
      * @return 构造方法
      */
     public Constructor<T> getConstructor(Class<?>... parameterTypes) {
-        final String cacheKey = Arrays.stream(parameterTypes).map(Class::getCanonicalName).collect(Collectors.joining());
+        StringBuilder sb = new StringBuilder();
+        for (Class<?> parameterType : parameterTypes) {
+            String canonicalName = parameterType.getCanonicalName();
+            sb.append(canonicalName);
+        }
+        final String cacheKey = sb.toString();
 
         Constructor<T> constructor = null;
         if (constructors != null) {
@@ -239,21 +268,25 @@ public class ClassInfo<T> {
         if (constructor == null) {
             try {
                 if (parameterTypes.length > 0) {
-                    constructor = (Constructor<T>) Arrays.stream(clazz.getConstructors())
-                            .filter(c -> c.getParameterCount() == parameterTypes.length)
-                            .filter(c -> {
-                                Class<?>[] ps = c.getParameterTypes();
-                                for (int i = 0; i < ps.length; i++) {
-                                    Class<?> p = ps[i];
-                                    boolean same = ClassUtil.isAssignableFrom(p, parameterTypes[i]);
-                                    if (!same) {
-                                        return false;
-                                    }
+                    for(Constructor<?> c :clazz.getConstructors()){
+                        if(c.getParameterCount() == parameterTypes.length){
+                            Class<?>[] ps = c.getParameterTypes();
+                            boolean isTrue = true;
+                            for (int i = 0; i < ps.length; i++) {
+                                Class<?> p = ps[i];
+                                boolean same = ClassUtil.isAssignableFrom(p, parameterTypes[i]);
+                                if (!same) {
+                                    isTrue = false;
+                                    break;
                                 }
-                                return true;
-                            })
-                            .findFirst()
-                            .orElse(null);
+                            }
+                            if(isTrue){
+                                constructor = (Constructor<T>)c;
+                                break;
+                            }
+                        }
+
+                    }
                 } else {
                     constructor = clazz.getConstructor();
                 }
@@ -363,9 +396,12 @@ public class ClassInfo<T> {
      * @return
      */
     private Type parseType(ParameterizedType parameterizedType) {
-        Type[] upperBounds = Arrays.stream(parameterizedType.getActualTypeArguments())
-                .map(this::switchParseType)
-                .toArray(Type[]::new);
+        List<Type> list = new ArrayList<>();
+        for (Type type : parameterizedType.getActualTypeArguments()) {
+            Type switchParseType = switchParseType(type);
+            list.add(switchParseType);
+        }
+        Type[] upperBounds = list.toArray(new Type[0]);
         return TypeUtils.parameterizeWithOwner(parameterizedType.getOwnerType(), (Class<?>) parameterizedType.getRawType(), upperBounds);
     }
 
@@ -386,14 +422,20 @@ public class ClassInfo<T> {
      * @return
      */
     private Type parseType(WildcardType wildcardType) {
-        Type[] upperBounds = Arrays.stream(wildcardType.getUpperBounds())
-                .map(this::switchParseType)
-                .toArray(Type[]::new);
+        List<Type> list = new ArrayList<>();
+        for (Type type : wildcardType.getUpperBounds()) {
+            Type switchParseType = switchParseType(type);
+            list.add(switchParseType);
+        }
+        Type[] upperBounds = list.toArray(new Type[0]);
 
 
-        Type[] lowerBounds = Arrays.stream(wildcardType.getLowerBounds())
-                .map(this::switchParseType)
-                .toArray(Type[]::new);
+        List<Type> result = new ArrayList<>();
+        for (Type type : wildcardType.getLowerBounds()) {
+            Type switchParseType = switchParseType(type);
+            result.add(switchParseType);
+        }
+        Type[] lowerBounds = result.toArray(new Type[0]);
 
         return TypeUtils.wildcardType().withUpperBounds(upperBounds).withLowerBounds(lowerBounds).build();
     }
@@ -413,7 +455,12 @@ public class ClassInfo<T> {
     }
 
     public Method getMethod(String methodName, Class<?>... paramTypes) {
-        final String cacheKey = methodName + Arrays.stream(paramTypes).map(Class::getCanonicalName).collect(Collectors.joining());
+        StringBuilder sb = new StringBuilder();
+        for (Class<?> paramType : paramTypes) {
+            String canonicalName = paramType.getCanonicalName();
+            sb.append(canonicalName);
+        }
+        final String cacheKey = methodName + sb;
         Method targetMethod = null;
         if (methodMap != null) {
             targetMethod = methodMap.get(cacheKey);
@@ -435,7 +482,13 @@ public class ClassInfo<T> {
             log.debug("Expected method not found: " + clazz.getName() + '.' + methodName);
             return null;
         } else {
-            Optional<Method> any = candidates.stream().filter(c -> c.getDeclaringClass() == clazz).findAny();
+            Optional<Method> any = Optional.empty();
+            for (Method c : candidates) {
+                if (c.getDeclaringClass() == clazz) {
+                    any = Optional.of(c);
+                    break;
+                }
+            }
             targetMethod = any.orElseGet(() -> candidates.iterator().next());
         }
         if (!targetMethod.isAccessible()) {
@@ -510,15 +563,17 @@ public class ClassInfo<T> {
      * @throws IllegalAccessException 访问限制
      */
     private void setParameterTypes(Method targetMethod) throws NoSuchFieldException, IllegalAccessException {
-        final Type[] types = Arrays.stream(targetMethod.getGenericParameterTypes())
-                .map(t -> {
-                    Type v = switchParseType(t);
-                    return v == null ? t : v;
-                })
-                .collect(Collectors.toList())
-                .toArray(new Type[]{});
+        Type[] genericParameterTypes = targetMethod.getGenericParameterTypes();
+        Type[] types = new Type[genericParameterTypes.length];
+        for(int i = 0;i<types.length;i++){
+            Type t = genericParameterTypes[i];
+            Type v = switchParseType(t);
+            v = v == null ? t : v;
+            types[i] = v;
+        }
 
-        if (types.length == 0) {
+        int size = types.length;
+        if (size == 0) {
             return;
         }
 
@@ -542,12 +597,13 @@ public class ClassInfo<T> {
         final Field methodParameterTypes = Method.class.getDeclaredField("parameterTypes");
         methodParameterTypes.setAccessible(true);
 
-        Class<?>[] classes = new Class[types.length];
-        for (int i = 0; i < types.length; i++) {
-            if (!(types[i] instanceof Class)) {
+        Class<?>[] classes = new Class[size];
+        for (int i = 0; i < size; i++) {
+            Type type = types[i];
+            if (!(type instanceof Class)) {
                 return;
             }
-            classes[i] = (Class<?>) types[i];
+            classes[i] = (Class<?>) type;
         }
         methodParameterTypes.set(targetMethod, classes);
     }
@@ -562,10 +618,10 @@ public class ClassInfo<T> {
         }
         if (allField.isEmpty()) {
             extractFieldRecursion(clazz, allField);
-            allField.parallelStream().forEach(field -> {
+            for (Field field : allField) {
                 field.setAccessible(true);
                 parsingGeneric(field);
-            });
+            }
         }
         return allField;
     }

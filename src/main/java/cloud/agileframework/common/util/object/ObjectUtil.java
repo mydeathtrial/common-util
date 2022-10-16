@@ -267,12 +267,8 @@ public class ObjectUtil extends ObjectUtils {
      */
     private static <T> T toMap(Object from, TypeReference<T> toClass) {
         if (toClass.isExtendsFrom(Map.class)) {
-            if (ClassUtil.isExtendsFrom(from.getClass(), Collection.class)
-                    || from.getClass().isArray()) {
-                return null;
-            }
-            Map<?, ?> map = MapUtil.parse(from);
-            return (T) MapUtil.toMap((Map<Object, Object>) map, (TypeReference<Map<Object, Object>>) toClass);
+            Map map = MapUtil.parse(from);
+            return (T) MapUtil.toMap(map, (TypeReference<Map<Object, Object>>) toClass);
         }
         return null;
     }

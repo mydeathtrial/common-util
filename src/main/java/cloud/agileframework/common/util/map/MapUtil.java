@@ -5,19 +5,22 @@ import cloud.agileframework.common.util.clazz.ClassUtil;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.object.ObjectUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.util.ParameterizedTypeImpl;
 import com.google.common.collect.Maps;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Stream;
 
@@ -128,13 +131,14 @@ public class MapUtil {
      * @param <V>     Value的类型
      * @return 转换后的新Map
      */
-    public static <K, V, K1, V1> Map<K, V> toMap(Map<K1, V1> from, TypeReference<Map<K, V>> toClass) {
-        Type mapType = toClass.getType();
-        mapType = mapType(mapType);
-        if (mapType == null) {
-            return (Map<K, V>) from;
+    public static <K, V, K1, V1> Map<K, V> toMap(Map<K1, V1> from, TypeReference<? extends Map<K, V>> toClass) {
+        if (from == null) {
+            return null;
         }
-        ParameterizedType parameterizedType = (ParameterizedType) mapType;
+        ParameterizedType parameterizedType = extractMapType(toClass.getType());
+        if (parameterizedType == null) {
+            return null;
+        }
         Class<?> wrapperClass = ClassUtil.getWrapper(toClass.getType());
 
         Map<K, V> result;
@@ -143,7 +147,13 @@ public class MapUtil {
             if (wrapperClass == ConcurrentMap.class) {
                 result = Maps.newConcurrentMap();
             } else if (wrapperClass == SortedMap.class) {
-                result = new TreeMap<>();
+                result = (Map<K, V>) Maps.newTreeMap();
+            } else if (wrapperClass == LinkedHashMap.class) {
+                result = Maps.newLinkedHashMap();
+            } else if (wrapperClass == IdentityHashMap.class) {
+                result = Maps.newIdentityHashMap();
+            } else if (wrapperClass == HashMap.class) {
+                result = Maps.newHashMap();
             } else {
                 result = Maps.newHashMapWithExpectedSize(from.size());
             }
@@ -173,6 +183,9 @@ public class MapUtil {
      * @param object 需要被转换的对象
      */
     public static Map parse(Object object) {
+        if (object == null || ClassUtil.isExtendsFrom(object.getClass(), Collection.class) || object.getClass().isArray()) {
+            return null;
+        }
         if (ClassUtil.isExtendsFrom(object.getClass(), Map.class)) {
             return (Map) object;
         }
@@ -180,13 +193,13 @@ public class MapUtil {
             try {
                 return JSON.parseObject((String) object);
             } catch (Exception ignored) {
+                return null;
             }
         }
         Set<Field> fields = ClassUtil.getAllField(object.getClass());
         Map<String, Object> map = Maps.newHashMapWithExpectedSize(fields.size());
         fields.forEach(field -> {
             try {
-                field.setAccessible(true);
                 Object value = field.get(object);
                 map.put(field.getName(), value);
             } catch (Exception ignored) {
@@ -277,23 +290,27 @@ public class MapUtil {
         return linkedHashMap;
     }
 
-    public static void main(String[] args) {
-        Map<String, Object> result = Maps.newHashMap();
-        result.put("myname", "1");
-        result.put("mycode", "2");
-        result.put("mytudou", "3");
-        keyFilter(result, "my", "e");
-        keyFilterAndCut(result, "my", "e");
-        toMap(result, new TypeReference<Map<StringBuilder, Integer>>() {
-        });
-    }
-
-    private static Type mapType(Type clazz) {
+    /**
+     * 提取class的Map参数化类型，辅助分析具体的参数化类型
+     *
+     * @param clazz 类
+     * @return clazz中提炼出来的Map参数化类型
+     */
+    private static ParameterizedType extractMapType(Type clazz) {
         if (clazz instanceof ParameterizedType) {
-            return clazz;
+            return (ParameterizedType) clazz;
+        }
+        if (clazz == Map.class) {
+            return new ParameterizedTypeImpl(new Type[]{String.class, Object.class}, Map.class, null);
         }
         if (clazz instanceof Class) {
-            return mapType(((Class) clazz).getGenericSuperclass());
+            Type[] interfaces = ((Class<?>) clazz).getGenericInterfaces();
+            for (Type in : interfaces) {
+                if (in instanceof ParameterizedType && Map.class == ((ParameterizedType) in).getRawType()) {
+                    return (ParameterizedType) in;
+                }
+            }
+            return extractMapType(((Class<?>) clazz).getGenericSuperclass());
         }
         return null;
     }

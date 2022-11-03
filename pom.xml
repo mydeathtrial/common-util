@@ -7,7 +7,7 @@
     <name>common-util</name>
     <groupId>cloud.agileframework</groupId>
     <artifactId>common-util</artifactId>
-    <version>2.1.0.M62</version>
+    <version>2.1.0.M63</version>
     <packaging>jar</packaging>
     <description>common-util</description>
     <url>https://github.com/mydeathtrial/common-util</url>
@@ -89,7 +89,7 @@
         <dependency>
             <groupId>cloud.agileframework</groupId>
             <artifactId>agile-context</artifactId>
-            <version>2.1.0.M62</version>
+            <version>2.1.0.M63</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

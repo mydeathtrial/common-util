@@ -9,7 +9,7 @@ public class FileUtilTest extends TestCase {
 
     public void testCreateZip() {
         try {
-            FileUtil.createZip(Lists.newArrayList(new File("D:\\a.xlsx"), new File("D:\\b.xlsx")), "D:\\", "asd.zip");
+            FileUtil.createZip("D:\\", "asd.zip",new File("D:\\a.xlsx"), new File("D:\\b.xlsx"));
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -1,12 +1,13 @@
 package cloud.agileframework.common.util.shell;
 
-import cloud.agileframework.common.util.stream.StreamUtil;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.Charset;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -192,9 +193,21 @@ public class ShellUtil {
      */
     private static Result getResult(Process process, long timeout, TimeUnit unit) throws InterruptedException, ExecutionException {
 
-        CompletableFuture<String> successLog = CompletableFuture.supplyAsync(() -> StreamUtil.toString(process.getInputStream()), POOL);
+        CompletableFuture<String> successLog = CompletableFuture.supplyAsync(() -> {
+            try {
+                return IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, POOL);
 
-        CompletableFuture<String> errorLog = CompletableFuture.supplyAsync(() -> StreamUtil.toString(process.getInputStream()), POOL);
+        CompletableFuture<String> errorLog = CompletableFuture.supplyAsync(() -> {
+            try {
+                return IOUtils.toString(process.getInputStream(), Charset.defaultCharset());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }, POOL);
 
         CompletableFuture<Boolean> main = CompletableFuture.supplyAsync(() -> {
             try {

@@ -268,7 +268,7 @@ public class POIUtil {
         List<CellInfo> unknownColumns = columns.stream().filter(a -> a.getSort() == -1).collect(Collectors.toList());
         for (CellInfo cellInfo : unknownColumns) {
             if (cellInfo.isRequire()) {
-                throw new ExcelFormatException();
+                throw new ExcelFormatException(cellInfo.getName()+"不能为空");
             }
         }
         Collections.sort(columns);

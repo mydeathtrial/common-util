@@ -2,7 +2,6 @@ package cloud.agileframework.common.util.file.poi;
 
 import com.google.common.collect.Lists;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -10,18 +9,15 @@ import java.util.List;
  * @author 佟盟
  * sheet页信息
  */
-public class SheetData {
+public class SheetData<T> {
     //sheet 页名
     private String name;
     //字段头信息
     private List<CellInfo> cells;
     //所有行数据
-    private List<Object> data;
+    private List<T> data;
 
-    public SheetData() {
-    }
-
-    public SheetData(String name, List<CellInfo> cells, List<Object> data) {
+    public SheetData(String name, List<CellInfo> cells, List<T> data) {
         this.name = name;
         this.cells = cells;
         this.data = data;
@@ -30,7 +26,7 @@ public class SheetData {
     private SheetData(Builder builder) {
         this.name = builder.name;
         this.cells = builder.cells;
-        this.data = builder.data;
+        this.data = (List<T>) builder.data;
     }
 
     public static Builder builder() {
@@ -48,11 +44,11 @@ public class SheetData {
         this.name = name;
     }
 
-    public List<Object> getData() {
+    public List<T> getData() {
         return data;
     }
 
-    public void setData(List<Object> data) {
+    public void setData(List<T> data) {
         this.data = data;
     }
 
@@ -64,7 +60,7 @@ public class SheetData {
         this.cells = cells;
     }
 
-    public SheetData addCell(CellInfo cell) {
+    public SheetData<T> addCell(CellInfo cell) {
         if (cells == null) {
             cells = Lists.newCopyOnWriteArrayList();
         }
@@ -78,7 +74,7 @@ public class SheetData {
     public static class Builder {
         private String name;
         private List<CellInfo> cells;
-        private List<Object> data;
+        private List<?> data;
 
         public Builder setName(String name) {
             this.name = name;
@@ -90,13 +86,13 @@ public class SheetData {
             return this;
         }
 
-        public Builder setData(List<Object> data) {
+        public <T>Builder setData(List<T> data) {
             this.data = data;
             return this;
         }
 
         public SheetData build() {
-            return new SheetData(this);
+            return new SheetData<>(this);
         }
     }
 }

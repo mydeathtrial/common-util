@@ -3,6 +3,7 @@ package cloud.agileframework.common.util.security;
 import cloud.agileframework.common.util.bytes.ByteUtil;
 import cloud.agileframework.common.util.file.FileUtil;
 import lombok.SneakyThrows;
+import org.apache.commons.io.FileUtils;
 
 import javax.crypto.Cipher;
 import java.io.File;
@@ -73,7 +74,7 @@ public class KeyUtil {
      */
     @SneakyThrows
     public static Key readFile(File file, Function<byte[], Key> byteToKey) {
-        String content = FileUtil.readFileToString(file, StandardCharsets.UTF_8);
+        String content = FileUtils.readFileToString(file, StandardCharsets.UTF_8);
         return contentToKey(content, byteToKey);
     }
 

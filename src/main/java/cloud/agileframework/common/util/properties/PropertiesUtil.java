@@ -5,10 +5,10 @@ import cloud.agileframework.common.util.array.ArrayUtil;
 import cloud.agileframework.common.util.clazz.TypeReference;
 import cloud.agileframework.common.util.file.JarUtil;
 import cloud.agileframework.common.util.object.ObjectUtil;
-import cloud.agileframework.common.util.stream.StreamUtil;
 import cloud.agileframework.common.util.string.StringUtil;
 import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Sets;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URL;
 import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
@@ -550,7 +551,7 @@ public class PropertiesUtil {
                 return null;
             }
 
-            return (JSON) JSON.parse(StreamUtil.toString(stream));
+            return (JSON) JSON.parse(IOUtils.toString(stream, Charset.defaultCharset()));
         } catch (Exception e) {
             return null;
         }
@@ -562,9 +563,9 @@ public class PropertiesUtil {
      * @param fileName 文件名字
      * @return 文件内容
      */
-    public static String getFileContent(String fileName) {
+    public static String getFileContent(String fileName) throws IOException {
         InputStream inputStream = getFileStream(fileName);
-        return StreamUtil.toString(inputStream);
+        return IOUtils.toString(inputStream, Charset.defaultCharset());
     }
 
     /**

@@ -1,11 +1,18 @@
 package cloud.agileframework.common.util.file;
 
+import cloud.agileframework.common.util.stream.ThrowingConsumer;
 import com.google.common.collect.Maps;
+import org.apache.commons.io.IOUtils;
 
+import javax.activation.MimetypesFileTypeMap;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Map;
 
 /**
@@ -13,35 +20,66 @@ import java.util.Map;
  */
 public class ResponseFile {
     private String fileName;
-    private String contentType;
-    private InputStream inputStream;
-    private Map<String, String> head = Maps.newHashMap();
-    private boolean isDownload;
+    private ThrowingConsumer<HttpServletResponse> write;
+    private static final MimetypesFileTypeMap MIMETYPES_FILE_TYPE_MAP = new MimetypesFileTypeMap();
 
-    public ResponseFile(String fileName, Map<String, String> head, InputStream inputStream, boolean isDownload) {
+    public ResponseFile(String fileName,
+                        String contentType,
+                        String characterEncoding,
+                        Map<String, String> head,
+                        ThrowingConsumer<HttpServletResponse> write) {
         this.fileName = fileName;
-        this.inputStream = inputStream;
-        this.isDownload = isDownload;
-        this.head = head;
+        this.write = response -> {
+            write.accept(response);
+            if (head!=null && !head.isEmpty()) {
+                for (Map.Entry<String, String> entry : head.entrySet()) {
+                    response.setHeader(entry.getKey(), entry.getValue());
+                }
+            }
+            response.setCharacterEncoding(characterEncoding == null ? StandardCharsets.UTF_8.displayName() : characterEncoding);
+            response.setContentType(contentType == null ? "application/octet-stream" : contentType);
+        };
     }
 
-    public ResponseFile(String fileName, String contentType, InputStream inputStream, boolean isDownload) {
-        this.fileName = fileName;
-        this.contentType = contentType;
-        this.inputStream = inputStream;
-        this.isDownload = isDownload;
+    public ResponseFile(String fileName, String contentType, String characterEncoding, Map<String, String> head, InputStream inputStream) {
+        this(fileName, contentType, characterEncoding, head, (ThrowingConsumer<HttpServletResponse>) null);
+     
+        this.write = response -> {
+           int contentLength = IOUtils.copy(inputStream, response.getOutputStream());
+           response.setContentLength(contentLength);
+        };
     }
 
-    public ResponseFile(String fileName, String contentType, InputStream inputStream) {
-        this(fileName, contentType, inputStream, true);
+    public ResponseFile(String fileName, String contentType, String characterEncoding, InputStream inputStream) {
+        this(fileName, contentType, characterEncoding, Maps.newHashMap(), inputStream);
     }
 
-    public ResponseFile(String fileName, String contentType, File file) throws FileNotFoundException {
-        this(fileName, contentType, new FileInputStream(file));
+    public ResponseFile(String fileName, Map<String, String> head, InputStream inputStream) {
+        this(fileName, null, null, head, inputStream);
     }
 
-    public ResponseFile(String fileName, File file) throws FileNotFoundException {
-        this(fileName, null, new FileInputStream(file));
+    public ResponseFile(String fileName, InputStream inputStream) {
+        this(fileName, null, null, Maps.newHashMap(), inputStream);
+    }
+
+    public ResponseFile(String fileName,String contentType, InputStream inputStream) {
+        this(fileName, contentType, null, Maps.newHashMap(), inputStream);
+    }
+
+    public ResponseFile(String fileName, String contentType, String characterEncoding, File file) throws IOException {
+        this(fileName, contentType, characterEncoding, Files.newInputStream(file.toPath()));
+    }
+
+    public ResponseFile(String fileName, String characterEncoding, File file) throws IOException {
+        this(fileName, MIMETYPES_FILE_TYPE_MAP.getContentType(file), characterEncoding, Files.newInputStream(file.toPath()));
+    }
+
+    public ResponseFile(String fileName, File file) throws IOException {
+        this(fileName, MIMETYPES_FILE_TYPE_MAP.getContentType(file), null, Files.newInputStream(file.toPath()));
+    }
+
+    public ResponseFile(File file) throws IOException {
+        this(file.getName(), MIMETYPES_FILE_TYPE_MAP.getContentType(file), null, Files.newInputStream(file.toPath()));
     }
 
     public String getFileName() {
@@ -52,39 +90,7 @@ public class ResponseFile {
         this.fileName = fileName;
     }
 
-    public String getContentType() {
-        return contentType;
-    }
-
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
-    }
-
-    public InputStream getInputStream() {
-        return inputStream;
-    }
-
-    public void setInputStream(InputStream inputStream) {
-        this.inputStream = inputStream;
-    }
-
-    public boolean isDownload() {
-        return isDownload;
-    }
-
-    public void setDownload(boolean download) {
-        isDownload = download;
-    }
-
-    public Map<String, String> getHead() {
-        return head;
-    }
-
-    public void setHead(Map<String, String> head) {
-        this.head.putAll(head);
-    }
-
-    public void setHead(String key, String value) {
-        this.head.put(key, value);
+    public void write(HttpServletResponse response) {
+        write.accept(response);
     }
 }
